@@ -130,6 +130,8 @@
 
     n_tag <- ngroups(x_object)
 
+    if(clustTools::is_combi_analysis(x_object)) n_tag <- n_tag$final
+
     n_tag <- purrr::map2_chr(n_tag$clust_id,
                              n_tag$n,
                              ~paste0(.x, ': n = ', .y))

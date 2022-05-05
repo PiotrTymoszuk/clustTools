@@ -574,7 +574,8 @@
 
     x_ss <- stats::aggregate(dist_mtx,
                              by = assignment[, 'clust_id'],
-                             FUN = function(x) sum(scale(x, scale = FALSE)^2))
+                             FUN = function(x) sum(scale(x, scale = FALSE)^2,
+                                                   na.rm = TRUE))
 
     wss <- rowSums(x_ss[, -1])
 
@@ -582,7 +583,7 @@
 
     ## total sum of squares
 
-    total_ss <- sum(scale(dist_mtx, scale = FALSE)^2)
+    total_ss <- sum(scale(dist_mtx, scale = FALSE)^2, na.rm = TRUE)
 
     ## output
 

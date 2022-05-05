@@ -130,7 +130,8 @@
 
     stopifnot(all(class(x) == 'combi_analysis'))
 
-    purrr::map(x$clust_analyses, ngroups)
+    c(purrr::map(x$clust_analyses, ngroups),
+      list(final = dplyr::count(x$clust_assignment, clust_id)))
 
   }
 
