@@ -32,7 +32,6 @@ Imports:
     philentropy,
     Rcpp,
     rlang,
-    somKernels,
     stringi,
     tidyverse,
     umap,
