@@ -9,7 +9,15 @@
 
   get_kernel_info <- function() {
 
-    av_distances <- somKernels::get_kernel_info()
+    av_distances <- c('BrayCurtis',
+                      'cosine',
+                      'dice',
+                      'jaccard',
+                      'smc',
+                      'sumofsquares',
+                      'euclidean',
+                      'manhattan',
+                      'tanimoto')
 
     av_distances[av_distances != 'BrayCurtis']
 
