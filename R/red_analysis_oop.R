@@ -53,6 +53,18 @@
                      var = x$red_obj$sdev^2,
                      perc_var = x$red_obj$sdev^2/sum(x$red_obj$sdev^2) * 100)
 
+    } else if(x$red_fun == 'fa') {
+
+      p <- nrow(x$red_obj$loadings)
+
+      sum_sq <- colSums(x$red_obj$loadings^2)
+
+      tibble::tibble(component = 1:ncol(x$red_obj$loadings),
+                     sdev = sqrt(sum_sq/p),
+                     perc_sdev = sqrt(sum_sq/p) * 100,
+                     var = sum_sq/p,
+                     perc_var = sum_sq/p * 100)
+
     } else {
 
       score_tbl <- x$component_tbl
@@ -241,7 +253,7 @@
 
     sdevs <- clustTools::extract(x, 'sdev')
 
-    if(x$red_fun %in% c('mds', 'umap')) {
+    if(x$red_fun %in% c('mds', 'umap', 'fa')) {
 
       ax_labs <- purrr::map2(c('Dim 1', 'Dim 2'),
                              signif(sdevs$perc_var[1:2], 3),
@@ -259,7 +271,17 @@
 
     if(type %in% c('component_tbl', 'scores')) {
 
-      clustTools::plot_point(data = clustTools::extract(x, 'scores'),
+      plot_data <- clustTools::extract(x, 'scores')
+
+      if(is.null(plot_data)) {
+
+        warning('No component table/scores available.', call. = FALSE)
+
+        return(NULL)
+
+      }
+
+      clustTools::plot_point(data = plot_data,
                              x_var = 'comp_1',
                              y_var = 'comp_2',
                              fill_var = NULL,
@@ -267,7 +289,8 @@
                              plot_title = switch(x$red_fun,
                                                  mds = 'MDS dimensions',
                                                  umap = 'UMAP dimensions',
-                                                 pca = 'PCA scores'),
+                                                 pca = 'PCA scores',
+                                                 fa = 'FA scores'),
                              plot_tag = plot_tag,
                              x_lab = ax_labs[[1]],
                              y_lab = ax_labs[[2]],
@@ -280,7 +303,9 @@
                              y_var = 'comp_2',
                              fill_var = NULL,
                              label_var = if(label_points) 'variable' else NULL,
-                             plot_title = 'PCA loadings',
+                             plot_title = switch(x$red_fun,
+                                                 pca = 'PCA loadings',
+                                                 fa = 'FA loadings'),
                              plot_tag = plot_tag,
                              x_lab = ax_labs[[1]],
                              y_lab = ax_labs[[2]],

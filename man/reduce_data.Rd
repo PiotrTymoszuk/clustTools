@@ -8,7 +8,7 @@ reduce_data(
   data,
   distance_method = "euclidean",
   kdim = 2,
-  red_fun = c("pca", "mds", "umap"),
+  red_fun = c("pca", "mds", "umap", "fa"),
   ...
 )
 }
@@ -26,19 +26,21 @@ For UMAP, the distance is specified by a
 
 \item{...}{extra arguments passed to \code{\link[pcaPP]{PCAproj}} (PCA),
 \code{\link[stats]{cmdscale}} (MDS) and \code{\link[umap]{umap}} (UMAP),
-like the \code{\link[umap]{umap.defaults}} object for UMAP.}
+like the \code{\link[umap]{umap.defaults}} object for UMAP,
+\code{\link[stats]{factanal}} (FA).}
 }
 \value{
 a 'red_analysis' object.
 }
 \description{
 Performs dimensionality reduction of a data frame with principal
-component analysis (PCA), multi-dimensional scaling (MDS) or Uniform Manifold
-Approximation and Projection (UMAP).
+component analysis (PCA), multi-dimensional scaling (MDS), Uniform Manifold
+Approximation and Projection (UMAP) or factor analysis (FA).
 }
 \details{
 A wrapper around \code{\link[pcaPP]{PCAproj}} (PCA),
-\code{\link[stats]{cmdscale}} (MDS) and \code{\link[umap]{umap}}. Note:
+\code{\link[stats]{cmdscale}} (MDS), \code{\link[umap]{umap}} (UMAP)
+and \code{\link[stats]{factanal}} (FA). Note:
 the distances and other UMAP parameters are specified by a
 \code{\link[umap]{umap.defaults}} object. Hence, not all distance measures
 returned by \code{\link{get_kernel_info}} are available for UMAP computation.

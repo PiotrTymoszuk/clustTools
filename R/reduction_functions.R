@@ -152,15 +152,78 @@
 
   }
 
+#' Factor analysis.
+#'
+#' @description Performs factor analysis of the data. A wrapper
+#' around \code{\link[stats]{factanal}}.
+#' @param data a data frame.
+#' @param kdim dimension number.
+#' @param ... extra arguments passed to \code{\link[stats]{factanal}}.
+
+  fa <- function(data, kdim = 2, ...) {
+
+    ## the entry control is accomplished by the upstream function
+
+    ## analysis
+
+    model_frame <- rlang::enexpr(data)
+
+    red_obj <- stats::factanal(x = data,
+                               factors = kdim, ...)
+
+    if(!is.null(red_obj$scores)) {
+
+      component_tbl <- red_obj$scores
+
+      rownames(component_tbl) <- rownames(data)
+
+      component_tbl <- as.data.frame(component_tbl)
+
+      component_tbl <- dplyr::mutate(component_tbl,
+                                     observation = rownames(data))
+
+      component_tbl <- tibble::as_tibble(component_tbl)
+
+      component_tbl <- rlang::set_names(component_tbl,
+                                        c(paste0('comp_', 1:kdim)),
+                                        'observation')
+
+    } else {
+
+      component_tbl <- NULL
+
+    }
+
+    loadings <- as.data.frame(unclass(red_obj$loadings))
+
+    loadings <- tibble::rownames_to_column(loadings, 'variable')
+
+    loadings <- tibble::as_tibble(loadings)
+
+    loadings <- rlang::set_names(loadings,
+                                 c('variable',
+                                   paste0('comp_', 1:kdim)))
+
+    ## output
+
+    clustTools::red_analysis(list(data = rlang::quo(!!model_frame),
+                                  red_obj = red_obj,
+                                  red_fun = 'fa',
+                                  component_tbl = component_tbl,
+                                  loadings = loadings))
+
+  }
+
 # Upstream analysis function ------
 
 #' Dimensionality reduction of a data set.
 #'
 #' @description Performs dimensionality reduction of a data frame with principal
-#' component analysis (PCA), multi-dimensional scaling (MDS) or Uniform Manifold
-#' Approximation and Projection (UMAP).
+#' component analysis (PCA), multi-dimensional scaling (MDS), Uniform Manifold
+#' Approximation and Projection (UMAP) or factor analysis (FA).
 #' @details A wrapper around \code{\link[pcaPP]{PCAproj}} (PCA),
-#' \code{\link[stats]{cmdscale}} (MDS) and \code{\link[umap]{umap}}. Note:
+#' \code{\link[stats]{cmdscale}} (MDS), \code{\link[umap]{umap}} (UMAP)
+#' and \code{\link[stats]{factanal}} (FA). Note:
 #' the distances and other UMAP parameters are specified by a
 #' \code{\link[umap]{umap.defaults}} object. Hence, not all distance measures
 #' returned by \code{\link{get_kernel_info}} are available for UMAP computation.
@@ -174,19 +237,20 @@
 #' @param red_fun name of the dimensionality reduction function.
 #' @param ... extra arguments passed to \code{\link[pcaPP]{PCAproj}} (PCA),
 #' \code{\link[stats]{cmdscale}} (MDS) and \code{\link[umap]{umap}} (UMAP),
-#' like the \code{\link[umap]{umap.defaults}} object for UMAP.
+#' like the \code{\link[umap]{umap.defaults}} object for UMAP,
+#' \code{\link[stats]{factanal}} (FA).
 #' @export
 
   reduce_data <- function(data,
                           distance_method = 'euclidean',
                           kdim = 2,
-                          red_fun = c('pca', 'mds', 'umap'), ...) {
+                          red_fun = c('pca', 'mds', 'umap', 'fa'), ...) {
 
-    ## entry control
+    ## entry control --------
 
     clustTools:::check_numeric(data)
 
-    red_fun <- match.arg(red_fun[1], c('pca', 'mds', 'umap'))
+    red_fun <- match.arg(red_fun[1], c('pca', 'mds', 'umap', 'fa'))
 
     if(!distance_method %in% clustTools::get_kernel_info()) {
 
@@ -196,7 +260,7 @@
 
     kdim <- as.integer(kdim)
 
-    ## analysis
+    ## analysis -------
 
     if(red_fun == 'mds') {
 
@@ -209,11 +273,16 @@
       return(clustTools:::pca(data,
                               kdim, ...))
 
-    } else {
+    } else if(red_fun == 'umap') {
 
       return(clustTools:::umap(data,
                                distance_method,
                                kdim, ...))
+
+    } else {
+
+      return(clustTools:::fa(data,
+                             kdim, ...))
 
     }
 
