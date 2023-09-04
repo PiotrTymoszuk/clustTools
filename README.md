@@ -1,3 +1,5 @@
+[![R](https://github.com/PiotrTymoszuk/clustTools/actions/workflows/r.yml/badge.svg)](https://github.com/PiotrTymoszuk/clustTools/actions/workflows/r.yml)
+
 # clustTools
 Comprehensive dimensionality reduction and cluster analysis toolset
 
@@ -11,7 +13,7 @@ You may easily fetch the package and its dependency `somKernels` with `devtools`
 
 ```r
 
-devtools::install_github('PiotrTymoszuk/figur')
+devtools::install_github('PiotrTymoszuk/clustTools')
 devtools::install_github('PiotrTymoszuk/somKernels')
 
 ```
