@@ -1,5 +1,7 @@
 [![R](https://github.com/PiotrTymoszuk/clustTools/actions/workflows/r.yml/badge.svg)](https://github.com/PiotrTymoszuk/clustTools/actions/workflows/r.yml)
 
+<img src="https://github.com/PiotrTymoszuk/clustTools/assets/80723424/fcf39384-39f7-43f8-a396-b546a3218398" width="20%" height="20%" align = "right">
+
 # clustTools
 Comprehensive dimensionality reduction and cluster analysis toolset
 
