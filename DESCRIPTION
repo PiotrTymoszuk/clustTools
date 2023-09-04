@@ -1,7 +1,7 @@
 Package: clustTools
 Type: Package
-Title: Tools for dimensionality reduction and data clustering.
-Version: 0.1.0
+Title: Tools for Dimensionality Reduction and Data Clustering
+Version: 1.1.0
 Maintainer: Piotr Tymoszuk <piotr.s.tymoszuk@gmail.com>
 Description: Provides a comprehensive set of R functions for dimensionality 
     reduction (PCA, MDS and UMAP), clustering (HCl, k-means, PAM, DBSCAN, SOM)
@@ -16,7 +16,6 @@ Authors@R:
     comment = c(ORCID = "0000-0002-0398-6034"))
 Imports: 
     caret,
-    cluster,
     cowplot,
     coxed,
     dbscan,
@@ -25,16 +24,21 @@ Imports:
     furrr,
     future,
     ggrepel,
-    grDevices,
     kohonen,
     nomclust,
     pcaPP,
     philentropy,
-    Rcpp,
-    rlang,
     somKernels,
     stringi,
-    tidyverse,
+    tidyr,
     umap,
     utils
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
+Depends: 
+    cluster,
+    dplyr,
+    generics,
+    ggplot2,
+    purrr,
+    rlang,
+    tibble

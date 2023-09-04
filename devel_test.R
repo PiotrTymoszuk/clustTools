@@ -48,13 +48,13 @@
                                rlen = 1000,
                                dist.fcts = 'jaccard')
 
-  plot_dendro(test_hcl,
-              k = 3,
-              labels = FALSE,
-              cluster_colors = c('firebrick',
-                                 'steelblue',
-                                 'darkolivegreen',
-                                 'black'))
+  #plot_dendro(test_hcl$clust_obj,
+   #           k = 3,
+    #          labels = FALSE,
+     #         cluster_colors = c('firebrick',
+      #                           'steelblue',
+       #                          'darkolivegreen',
+        #                         'black'))
 
   plot_nbclust(test_distances$sumofsquares,
                k = 3,
@@ -316,7 +316,7 @@
                               toroidal = FALSE,
                               rlen = 1000,
                               node_clust_fun = hcluster,
-                              k = 2,
+                              k = 3,
                               hc_method = 'complete')
 
   extract(test_combi, 'clust_object')
@@ -352,9 +352,9 @@
                             kNN = 10,
                             resolve_ties = TRUE)
 
-  plot(test_new_combi, type = 'components', red_fun = 'pca', with = 'data', k = 2)
+  plot(test_new_combi, type = 'components', red_fun = 'umap', with = 'data', k = 2)
 
-  plot(test_combi, type = 'components', red_fun = 'pca', with = 'data', k = 2)
+  plot(test_combi, type = 'components', red_fun = 'umap', with = 'data', k = 2)
 
 # Cross-validation -------
 
@@ -394,7 +394,18 @@
                      k = 2,
                      hc_method = 'complete')
 
-  plot(impact(test_combi))
+  test_impact <-
+    impact(test_pam,
+           n_iter = 100,
+           .parallel = TRUE)
+
+  test_som_impact <-
+    impact(test_combi,
+           n_iter = 100,
+           .parallel = TRUE)
+
+  plot(test_som_impact)
+  summary(test_som_impact)
 
 # Feature plotting ------
 
@@ -405,16 +416,50 @@
   plot_clust_hm(x_object = test_combi,
                 y_object = ft_clust)
 
+# Cross distance -------
+
+  cross_distance(test_data, new_data)
+
+  cross_distance(new_data, method = 'cosine')
+
+  cross_distance(test_pam)
+
+  test_cross <- cross_distance(test_combi, test_new_combi)
+
+  summary(cross_distance(test_combi, test_new_combi))
+  summary(cross_distance(test_pam))
+
+  plot(test_cross)
+  plot(test_cross, type = 'mean')
+
+  plot(cross_distance(test_pam))
+  plot(cross_distance(test_pam), type = 'mean')
+
+  plot(test_cross, type = 'hist')
+  plot(cross_distance(test_hcl), type = 'hist', color = 'black')
+
+# Silhouettes ------
+
+  test_hcl <-
+    rename(test_hcl,
+           nm = c('2' = 'cluster_2',
+                  '1' = 'cluster_1',
+                  '3' = 'cluster_3'))
+
+  test_combi <-
+    rename(test_combi,
+           nm = c('3' = 'cluster_C',
+                  '2' = 'cluster_B',
+                  '1' = 'cluster_A'))
 
 
 
+  silhouette(test_hcl)
+
+  summary(silhouette(test_combi))
+
+  plot(silhouette(test_combi), fill_by = 'sign')
+  plot(silhouette(test_hcl), fill_by = 'neighbor')
 
 
-
-
-
-
-
-
-
-
+# END -----
