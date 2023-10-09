@@ -124,7 +124,7 @@ biopsy_clust_tendency <- biopsy_lst %>%
 [1] 0.7307125
 ```
 
-I'm using the `clustTools` functions `hcluster()` and `kcluster()` to cluster the training portion of the data set with the hierarchical clusetring, kmeans and PAM. I'm also trying two distance measures: Euclidean and cosine. The initially guessed cluster number is set to `k = 2` as expected for the data set containing two types of samples. Importantly, those clustering functions return objects of `clust_analysis` class, which can be, irrespectively of the clustering algorithm, subjected to a consistentquality control and validation.
+I'm using the `clustTools` functions `hcluster()` and `kcluster()` to cluster the training portion of the data set with the hierarchical clusetring, kmeans and PAM. I'm also trying two distance measures: Euclidean and cosine. The initially guessed cluster number is set to `k = 2` as expected for the data set containing two types of samples. Importantly, those clustering functions take numeric data frames or matrices as the first argument and return objects of `clust_analysis` class, which can be, irrespectively of the clustering algorithm, subjected to a consistent quality control and validation.
 
 ```r
 
@@ -333,7 +333,7 @@ Let's compare mean silhouettes and clusetring variances for different clustering
     map_dbl(~.x$frac_var)
 
 ```
-In the `biopsy` data set, Euclidean distance yields a generally better separation between the clusters as the cosine metics as unequivocally demonstrated by mean silhouettes. The PAM/Euclidean solution has also the lowest count of potentially misclassified observations.
+In the `biopsy` data set, Euclidean distance yields a generally better separation between the clusters as the cosine metics as unequivocally demonstrated by mean silhouettes. The PAM/Euclidean solution has the lowest count of potentially misclassified observations with negative silhouette widths.
 
 ```r
 > cl_silhouettes
@@ -389,20 +389,240 @@ The `clustTools` package offers also a rich set of visual diagnostic tools. Heat
 ```
 
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/9e55beb1-49f0-4eba-993e-84657e210bfb)
+  
+</details>
 
+## Cross-validation
 
+<details>
 
+Unsupervised clustering objects resemble multi-parameter classification machine learning models in multiple aspects. By principle, they can be cross-validated just like any other machine learning models. In brief, in each cross-validation fold, the training portion is used for fitting of the clustering structure with the same algorithm as the parent clustering solution. The test portion of the fold is used for calculation of numeric stats and assessment of cluster assignment accuracy as compared with the parental clustering solution. Such approach has few advantages as compared with computation of numeric statistics only for the training data subset like a more robust handling of atypical observations and assessment of over-fitting. 
+The default method of assignment of test portion observations to the clusters defined in the trainig portion of the cross-validation fold is so-called k-nearest neighbor label propagation. This prediction algorithm is resonably fast and agnostic to the clustering procedure. 
 
+Here, we'll cross-validate the `biopsy` training subset clustering objects generated with the best performing Euclidean distance. This is accomplished with the `cv()` function, which returns out-of-fold predictions, numeric statistics for the folds along with means and confidence intervals of cluster assignment accuracy, classification error, explained clustering variance and mean silhouette. The later statistics can be retrieved from the `cv()` output by calling `summary()`:
 
+```r
 
+  euclidean_cv_stats <- 
+    clust_objects[c("hcl_euclidean", "kmeans_euclidean", "pam_euclidean")] %>% 
+    map(cv) %>% 
+    map(summary)
 
+```
 
+```r
 
+> euclidean_cv_stats %>% 
++ map(select, ends_with('mean'))
+$hcl_euclidean
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1         0.763      0.237         0.805          0.586
 
+$kmeans_euclidean
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1         0.395      0.605         0.813          0.588
 
+$pam_euclidean
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1         0.790      0.210         0.801          0.586
 
+```
 
+In case of kmeans clustering and of other algorithms with stochastic determination of the initial cluster centers, the accuracy and classification error are expected to be poor. Still, we can use fractions of explained variations (`frac_var`) and mean silhouette widths (`sil_width`), to compare the clustering procedures. While all of them have similar discriminatory power, the kmeans/Euclidean colution displays the largest fraction of explained variance.
+  
+</details>
 
+## Semi-supervised clustering
+
+<details>
+
+As for cross-validation, there's a possibility to apply the k-nearest neighbor (kNN) label propagation algorithm to predict the cluster assignment in a hold-out subset or external validation data set. Here we'll predict the cluster assignment defined by the kmeans/Euclidean clustering in the training portion for the test subset of the `biopsy` data set and check quality of the cluster assignment with explained clustering variance and silhouette width. 
+The prediction is done with the `predict()` function, which takes a clustering analysis object as the first argument and a numeric data frame or matrix as `newdata`; the `type` argument is set to 'propagation' for the kNN procedure. The output is an instance of `clust_analysis` class, which allows for direct comparison of the training and test data clustering.
+
+```r
+
+  ## predictions for KMEANS/Euclidean
+  
+  kmeans_clusters <- list()
+  
+  kmeans_clusters$training <- clust_objects$kmeans_euclidean
+  
+  kmeans_clusters$test <- 
+    predict(clust_objects$kmeans_euclidean, 
+            newdata = biopsy_lst$test, 
+            type = 'propagation')
+
+```
+
+Let's compare explained variances and mean silhouette witdths of the training clustering and predictions: 
+
+```r
+
+  ## explained variance and silhouette width
+  
+  kmeans_variance <- kmeans_clusters %>% 
+    map(var) %>% 
+    map_dbl(~.x$frac_var)
+  
+  kmeans_silhouette <- kmeans_clusters %>% 
+    map(silhouette) %>% 
+    map(summary)
+
+```
+```r
+>   kmeans_variance
+ training      test 
+0.8303221 0.8385571
+
+>   kmeans_silhouette
+$training
+# A tibble: 3 × 13
+  clust_id     n n_negative perc_negative  mean    sd median   q025   q25   q75  q975    min   max
+  <fct>    <int>      <int>         <dbl> <dbl> <dbl>  <dbl>  <dbl> <dbl> <dbl> <dbl>  <dbl> <dbl>
+1 global     383         17          4.44 0.583 0.282  0.748 -0.106 0.365 0.810 0.843 -0.291 0.843
+2 1          249          0          0    0.764 0.102  0.805  0.443 0.750 0.819 0.843  0.282 0.843
+3 2          134         17         12.7  0.248 0.184  0.297 -0.182 0.166 0.388 0.465 -0.291 0.473
+
+$test
+# A tibble: 3 × 13
+  clust_id     n n_negative perc_negative  mean    sd median    q025   q25   q75  q975    min   max
+  <fct>    <int>      <int>         <dbl> <dbl> <dbl>  <dbl>   <dbl> <dbl> <dbl> <dbl>  <dbl> <dbl>
+1 global     300          5          1.67 0.608 0.262  0.771  0.0694 0.391 0.815 0.849 -0.230 0.849
+2 1          198          0          0    0.774 0.104  0.806  0.415  0.775 0.822 0.849  0.195 0.849
+3 2          102          5          4.90 0.287 0.156  0.311 -0.141  0.192 0.402 0.480 -0.230 0.500
+
+```
+
+The cluster prediction in the test portion of the `biopsy` data set seems to be equally informative as in the parental clustering solution. Moreover, the discriminatory performance measured by silhouettes is even marginally better for the test data than for the training subset. The distinctess of the clusters can be assessed by heat maps of pairwise distances between observations:
+
+```r
+
+kmeans_heat_maps <- kmeans_clusters %>% 
+    map(plot, type = 'heat_map') %>% 
+    map(~.x + 
+          theme(legend.position = 'bottom', 
+                plot.tag = element_blank(), 
+                axis.text = element_blank(), 
+                axis.text.x = element_blank(), 
+                axis.ticks = element_blank(), 
+                axis.line = element_blank())) %>% 
+    map2(., c('Biopsy: training', 'Biopsy: test'), 
+         ~.x + labs(title = .y))
+
+```
+
+```r
+
+> kmeans_heat_maps$training + kmeans_heat_maps$test
+
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/e9725bda-1939-4a0a-85a9-7168b56e3200)
+
+By calling `cross_distance()` for the training and test data clustering structures, we can also assess how the training and test clusters relate to each other:
+
+```r
+kmeans_cross_dists <- 
+    cross_distance(kmeans_clusters$training, 
+                   kmeans_clusters$test)
+
+```
+
+```r
+> kmeans_cross_dists %>% 
++ plot(type ='mean')
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/4d0a1091-bb61-4e0e-bd22-d7b28e80dfa6)
+
+Finally, let's compare the distribution of malignant and benign samples between the clusters. This analysis reveals, that nearly all benign samples were assigned to the cluster 1 and malingnant samples were located in the cluster 2:
+
+```r
+
+  ## retrieving the cluster assignments
+  
+  kmeans_clust_assign <- kmeans_clusters %>% 
+    map(extract, 'assignment') %>% 
+    map(mutate, ID = observation)
+  
+  ## joining with the biopsy data
+  
+  kmeans_clust_assign <- kmeans_clust_assign %>% 
+    map(left_join, 
+        my_biopsy[c('ID', 'class')], 
+        by = 'ID')
+  
+  ## counting benign and malignant samples in the clusters
+  
+  kmeans_clust_counts <- kmeans_clust_assign %>% 
+    map(count, clust_id, class)
+
+```
+```r
+> kmeans_clust_counts
+$training
+# A tibble: 4 × 3
+  clust_id class         n
+  <fct>    <fct>     <int>
+1 1        benign      240
+2 1        malignant     9
+3 2        benign        7
+4 2        malignant   127
+
+$test
+# A tibble: 4 × 3
+  clust_id class         n
+  <fct>    <fct>     <int>
+1 1        benign      193
+2 1        malignant     5
+3 2        benign        4
+4 2        malignant    98
+
+```
+We can corroborate it further by computing accuracy, Cohen's kappa and receiver-operating characteristic with `caret`:
+
+```r
+## kappa and ROC: I'm using `multiClassSummary()`
+  ## which takes a data frame with the `obs` and `pred`
+  ## variables storing the observed and predicted outcome, respectively
+  
+  library(caret)
+  
+  kmeans_clust_assign <- kmeans_clust_assign %>% 
+    map(mutate, 
+        obs = class, 
+        pred = car::recode(clust_id, 
+                           "'1' = 'benign'; '2' = 'malignant'"), 
+        pred = factor(pred, c('benign', 'malignant')))
+  
+  kmeans_roc_stats <- kmeans_clust_assign %>% 
+    map(select, obs, pred) %>% 
+    map(as.data.frame) %>% 
+    map(multiClassSummary, 
+        lev = c('benign', 'malignant'))
+```
+The kmeans/Euclidean clustering of the `biopsy` data set allows an excellent discrimination of the malignant and benign breast biopsy samples:
+
+```r
+
+>  kmeans_roc_stats
+$training
+         Accuracy             Kappa                F1       Sensitivity       Specificity    Pos_Pred_Value    Neg_Pred_Value 
+        0.9582245         0.9084854         0.9677419         0.9716599         0.9338235         0.9638554         0.9477612 
+        Precision            Recall    Detection_Rate Balanced_Accuracy 
+        0.9638554         0.9716599         0.6266319         0.9527417 
+
+$test
+         Accuracy             Kappa                F1       Sensitivity       Specificity    Pos_Pred_Value    Neg_Pred_Value 
+        0.9700000         0.9333136         0.9772152         0.9796954         0.9514563         0.9747475         0.9607843 
+        Precision            Recall    Detection_Rate Balanced_Accuracy 
+        0.9747475         0.9796954         0.6433333         0.9655759 
+
+```
   
 </details>
 
@@ -413,3 +633,5 @@ The `clustTools` package offers also a rich set of visual diagnostic tools. Heat
 3. Schubert E, Rousseeuw PJ. Faster k-Medoids Clustering: Improving the PAM, CLARA, and CLARANS Algorithms. in Lecture Notes in Computer Science (including subseries Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics) (Springer), 171–187. doi:10.1007/978-3-030-32047-8_16
 4. Kassambara A, Mundt F. factoextra: Extract and Visualize the Results of Multivariate Data Analyses. (2020) Available at: https://cran.r-project.org/web/packages/factoextra/index.html [Accessed May 14, 2022]
 5. Rousseeuw PJ. Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. J Comput Appl Math (1987) 20:53–65. doi:10.1016/0377-0427(87)90125-7
+6. Lange T, Roth V, Braun ML, Buhmann JM. Stability-based validation of clustering solutions. Neural Comput (2004) 16:1299–1323. doi:10.1162/089976604773717621
+7. Leng M, Wang J, Cheng J, Zhou H, Chen X. Adaptive semi-supervised clustering algorithm with label propagation. J Softw Eng (2014) 8:14–22. doi:10.3923/jse.2014.14.22
