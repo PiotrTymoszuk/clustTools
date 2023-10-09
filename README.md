@@ -626,6 +626,120 @@ $test
   
 </details>
 
+## Advanced visualization options
+
+<details>
+
+Visualization of clustering structure with help of dimensionality reduction methods has a long tradition. By calling `plot(type = 'components')` for a clustering analysis objects, the `clustTools` package generates a scatter plot of observations's scores associated with the first two dimensions of prlincipal component analysis (PCA), multi-dimensional scaling (MDS) or Uniform Manifold Approximation and Projection (UMAP). By default, the dimensionality reduction is done for the distance matrix, by specifying `with = 'data'`, the user can request it for the genuine data set.
+
+```r
+
+## plots of MDS of the distance matrix, as an alternative 
+  ## of distance heat map
+  
+  kmeans_mds_dist <- kmeans_clusters %>% 
+    map(plot,
+        type = 'components', 
+        red_fun = 'mds') %>% 
+    map(~.x + 
+          theme(plot.tag = element_blank(), 
+                legend.position = 'bottom'))
+
+```
+```r
+> kmeans_mds_dist$training + kmeans_mds_dist$test
+```
+
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/501958ae-017c-41b4-a1c1-fcd1d51535b0)
+
+```r
+
+  ## UMAP of the data set
+  
+  kmeans_umap_data <- kmeans_clusters %>% 
+    map(plot, 
+        type = 'components', 
+        red_fun = 'umap',
+        with = 'data') %>% 
+    map(~.x + 
+          theme(plot.tag = element_blank(), 
+                legend.position = 'bottom'))
+
+```
+```r
+> kmeans_umap_data$training + kmeans_umap_data$test
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/d105f4b6-8f66-4421-bbc4-8705ef513d2f)
+
+By calling `plot_clust_hm()` for a clusterin analysis object, a heat map representation of clustering features is plotted. The color scale may be easily customized e.g. with ggplot's `scale_fill_gradient2()`:
+
+```r
+## heat maps of clustering features
+    
+  kmeans_hm_variables <- kmeans_clusters %>% 
+    map(plot_clust_hm) %>% 
+    map(~.x + 
+          scale_fill_gradient2(low = 'steelblue', 
+                               mid = 'black', 
+                               high = 'firebrick', 
+                               midpoint = 5.5, 
+                               limits = c(1, 10)) + 
+          theme(axis.text.x = element_blank(), 
+                axis.ticks.x = element_blank(), 
+                axis.line.x = element_blank(), 
+                legend.position = 'bottom')) %>% 
+    map2(., c('Biopsy: training', 'Biopsy: test'), 
+         ~.x + labs(title = .y))
+```
+```r
+> kmeans_hm_variables$training + kmeans_hm_variables$test
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/12709b76-99eb-4106-8afb-0ed8caad70c2)
+  
+</details>
+
+## Clustering variable importance
+
+<details>
+Permutation variable importance as proposed by Breiman for machine learning algorithms can be applied directly to clusterin analyses. The principle is quite simple: we're comparing quality fo clustering of the genuine clustering structure with a clustering objects fitted to the data set with one of the variables reshuffled by random. This procedure is repeated for all clusetring features and may run in several iterations exclude random unexpecte results. In `clustTools`, permutation variable importance is computed with the `impact()` function for explained clustering variance as loss function, i.e. the metric used to compare the input and reshuffled clustering structure. Of importance, this procedue can be done only for clustering objects fitted to the training data set and not for predictions. The computation for multiple iterations can be accelerated by launching he function in parallel. The results can be visualized by calling `plot()` and their wrpa-up retirieved by `summary()`:
+
+```r
+
+kmeans_variable_importance <-
+    impact(kmeans_clusters$training,
+           n_iter = 50,
+           .parallel = TRUE)
+
+```
+```r
+> summary(kmeans_variable_importance)
+# A tibble: 9 × 9
+  variable   mean      sd median    q25    q75     min    max n_iter
+  <chr>     <dbl>   <dbl>  <dbl>  <dbl>  <dbl>   <dbl>  <dbl>  <int>
+1 V1       0.0507 0.00502 0.0501 0.0481 0.0539 0.0386  0.0600     50
+2 V2       0.0749 0.00897 0.0735 0.0700 0.0809 0.0468  0.0964     50
+3 V3       0.0596 0.00790 0.0589 0.0538 0.0644 0.0461  0.0811     50
+4 V4       0.0555 0.00867 0.0546 0.0490 0.0616 0.0333  0.0736     50
+5 V5       0.0290 0.00567 0.0283 0.0257 0.0327 0.0156  0.0440     50
+6 V6       0.157  0.00880 0.157  0.151  0.163  0.134   0.174      50
+7 V7       0.0404 0.00516 0.0402 0.0365 0.0441 0.0307  0.0514     50
+8 V8       0.0857 0.0107  0.0842 0.0785 0.0920 0.0621  0.109      50
+9 V9       0.0166 0.00723 0.0154 0.0124 0.0219 0.00289 0.0339     50
+```
+
+```r
+> plot(kmeans_variable_importance)
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/2225235a-26df-4c8b-a4bf-3f6d4feddb25)
+
+As inferred from the summary table and the plot, the variable `V6` is by far the most influential clustering variable.
+
+</details>
+
+## Self-organizing maps
+
+
+
 ## References
 
 1. Murtagh F, Contreras P. Algorithms for hierarchical clustering: An overview. Wiley Interdiscip Rev Data Min Knowl Discov (2012) 2:86–97. doi:10.1002/widm.53
@@ -635,3 +749,8 @@ $test
 5. Rousseeuw PJ. Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. J Comput Appl Math (1987) 20:53–65. doi:10.1016/0377-0427(87)90125-7
 6. Lange T, Roth V, Braun ML, Buhmann JM. Stability-based validation of clustering solutions. Neural Comput (2004) 16:1299–1323. doi:10.1162/089976604773717621
 7. Leng M, Wang J, Cheng J, Zhou H, Chen X. Adaptive semi-supervised clustering algorithm with label propagation. J Softw Eng (2014) 8:14–22. doi:10.3923/jse.2014.14.22
+8. Kuhn M. Building predictive models in R using the caret package. J Stat Softw (2008) 28:1–26. doi:10.18637/jss.v028.i05
+9. Croux C, Filzmoser P, Oliveira MR. Algorithms for Projection-Pursuit robust principal component analysis. Chemom Intell Lab Syst (2007) 87:218–225. doi:10.1016/j.chemolab.2007.01.004
+10. McInnes L, Healy J, Melville J. UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction. (2018) Available at: https://arxiv.org/abs/1802.03426v3 [Accessed February 21, 2022]
+11. Konopka T. umap: Uniform Manifold Approximation and Projection. (2022) Available at: https://cran.r-project.org/web/packages/umap/index.html [Accessed June 1, 2022]
+12. Breiman L. Random forests. Mach Learn (2001) 45:5–32. doi:10.1023/A:1010933404324
