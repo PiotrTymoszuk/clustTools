@@ -736,9 +736,137 @@ As inferred from the summary table and the plot, the variable `V6` is by far the
 
 </details>
 
+## Density clustering
+
+<details>
+
+Density clustering is implemented in the `clustTools` package by the DBSCAN algorithm. While its applicability to high dimension data is limited, it can robustly cope with with data subjected previously to dimensionality reduction e.g. with UMAP. To streamline the reduction - clustering workflow, nearly all clustering functions of the package can be coupled with the `reduce_data()` tool. In the following example, we'll subject the `biopsy` data set to UMAP and subsequently cluster the UMAP score layout with DBSCAN. Unlike for hierarchical clustering or mean/medoid clusetring, the user does not have to specify the cluster number. The clustering behavior is controlled with the `eps` parameter defining the distance threshold for noise observations and minPts specifying the size of the nearest neighborhood:
+
+```r
+
+  ## generating the UMAP layouts for the training and test
+  ## portion of the data set
+
+  biopsy_density <- biopsy_lst %>%
+    map(reduce_data,
+        distance_method = 'manhattan',
+        kdim = 2,
+        red_fun = 'umap', 
+        random_state = 1234)
+
+  ## clustering the training subset
+  ## eps is a pure guess to begin with
+
+  biopsy_dbscan <- list()
+
+  biopsy_dbscan$training <-
+    dbscan_cluster(data = biopsy_density$train,
+                   distance_method = 'manhattan', 
+                   eps = 1,
+                   minPts = 7)
+
+```
+In a similar manner to hierarchical of kmeans clustering, the function `plot(type = 'diagnostic')` may be employed for setting the optimal `eps` value. Following the logics of Belyadi and colleagues, nois observations tend towards rapidly expanding k-nearest neighbor distance for noisy observations. Hence the optimal `eps` threshold should be placed just below the steep increase of the nearest neighbor distance plot. With `eps = 1`, we set the threshold obviously far too high:
+
+```r
+> plot(biopsy_dbscan$training)
+$knn_dist
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/0f1ecd4a-1364-4da5-b71c-03c07ae36ab4)
+
+
+`eps` value of 0.7 seems to do the job
+
+```r
+  biopsy_dbscan$training <-
+    dbscan_cluster(data = biopsy_density$train,
+                   distance_method = 'manhattan', 
+                   eps = 0.7,
+                   minPts = 7)
+
+```
+
+```r
+> plot(biopsy_dbscan$training)
+$knn_dist
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/175191fb-039e-4599-8299-23f36f1c2b27)
+
+Numeric statistics, cross-validation and semi-supervised clustering are accomplished in the usual way. Let's check the luster predictions for the test portion of the `biopsy` data set:
+
+```r
+ ## predictions
+
+  biopsy_dbscan$test <-
+    predict(biopsy_dbscan$training,
+            newdata = biopsy_density$test,
+            type = 'propagation')
+
+  ## clustering variance and silhouette width
+
+  biopsy_dbscan_variance <- biopsy_dbscan %>%
+    map(var) %>%
+    map_dbl(~.x$frac_var)
+
+  biopsy_dbscan_silhouette <- biopsy_dbscan %>%
+    map(silhouette) %>%
+    map(summary)
+
+```
+
+```r
+>   biopsy_dbscan_variance
+ training      test 
+0.9922007 0.2608777
+
+>   biopsy_dbscan_silhouette 
+$training
+# A tibble: 5 × 13
+  clust_id     n n_negative perc_negative   mean       sd median   q025    q25   q75  q975    min   max
+  <fct>    <int>      <int>         <dbl>  <dbl>    <dbl>  <dbl>  <dbl>  <dbl> <dbl> <dbl>  <dbl> <dbl>
+1 global     383         62          16.2 0.481   0.482    0.660 -0.507  0.236 0.938 0.959 -0.911 0.960
+2 0            1          0           0   0      NA        0      0      0     0     0      0     0    
+3 1          122          0           0   0.947   0.00912  0.947  0.928  0.939 0.955 0.960  0.926 0.960
+4 2          177         62          35.0 0.0448  0.360    0.148 -0.583 -0.391 0.364 0.419 -0.911 0.420
+5 3           83          0           0   0.733   0.0662   0.763  0.594  0.675 0.783 0.806  0.564 0.807
+
+$test
+# A tibble: 5 × 13
+  clust_id     n n_negative perc_negative     mean      sd median   q025    q25    q75   q975     min      max
+  <fct>    <int>      <int>         <dbl>    <dbl>   <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>   <dbl>    <dbl>
+1 global     300        146          48.7   0.0143  0.479   0.262 -0.730 -0.427  0.439  0.855  -0.785    0.885
+2 0            0          0         NaN   NaN      NA      NA     NA     NA     NA     NA     Inf     -Inf    
+3 1           13          0           0     0.843   0.0643  0.882  0.705  0.806  0.883  0.885   0.666    0.885
+4 2          146        146         100    -0.453   0.159  -0.442 -0.759 -0.578 -0.325 -0.223  -0.785   -0.216
+5 3          141          0           0     0.422   0.0751  0.430  0.262  0.380  0.461  0.529   0.228    0.529
+```
+
+Interestingly, the UMAP - DBSCAN procedure overfits massively as demonstrated by the huge differences in clustering variances and mean silhouettes between the training and test data set. The failure of the clustering solution to predict the test subset assignment is also obvius, when the UMAP layout is visualized in a scatter plot. To this end we'll call `plot(type = 'data')`, which plots the first two variables of the clustering data set - in this case the first two UMAP dimensions.
+
+```r
+
+  biopsy_dbscan_umap_layout <- biopsy_dbscan %>%
+    map(plot, 
+        type = 'data') %>% 
+    map(~.x + 
+          theme(plot.tag = element_blank(), 
+                legend.position = 'bottom'))
+
+```
+```r
+> biopsy_dbscan_umap_layout$training + biopsy_dbscan_umap_layout$test
+```
+
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/55ee42a3-d0d6-41f1-b173-07afb3fb1c64)
+
+</details>
+
 ## Self-organizing maps
 
+<details>
 
+  
+</details>
 
 ## References
 
@@ -754,3 +882,5 @@ As inferred from the summary table and the plot, the variable `V6` is by far the
 10. McInnes L, Healy J, Melville J. UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction. (2018) Available at: https://arxiv.org/abs/1802.03426v3 [Accessed February 21, 2022]
 11. Konopka T. umap: Uniform Manifold Approximation and Projection. (2022) Available at: https://cran.r-project.org/web/packages/umap/index.html [Accessed June 1, 2022]
 12. Breiman L. Random forests. Mach Learn (2001) 45:5–32. doi:10.1023/A:1010933404324
+13. Hahsler M, Piekenbrock M, Doran D. Dbscan: Fast density-based clustering with R. J Stat Softw (2019) 91:1–30. doi:10.18637/jss.v091.i01
+14. Belyadi H, Haghighat A, Nguyen H, Guerin A-J. IOP Conference Series: Earth and Environmental Science Determination of Optimal Epsilon (Eps) Value on DBSCAN Algorithm to Clustering Data on Peatland Hotspots in Sumatra Related content EPS conference comes to London-EPS rewards quasiparticle research-EP. IOP Conf Ser Earth Environ Sci (2016) 31: doi:10.1088/1755-1315/31/1/012012
