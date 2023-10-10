@@ -278,7 +278,7 @@ As indicated by the two main branches of the dendrogram, the bend of the within-
 
 </details>
 
-## Quality control of clustering solutions
+### Quality control of clustering solutions
 
 <details>
 
@@ -392,7 +392,7 @@ The `clustTools` package offers also a rich set of visual diagnostic tools. Heat
   
 </details>
 
-## Cross-validation
+### Cross-validation
 
 <details>
 
@@ -438,7 +438,7 @@ In case of kmeans clustering and of other algorithms with stochastic determinati
   
 </details>
 
-## Semi-supervised clustering
+### Semi-supervised clustering
 
 <details>
 
@@ -626,7 +626,7 @@ $test
   
 </details>
 
-## Advanced visualization options
+### Advanced visualization options
 
 <details>
 
@@ -698,7 +698,7 @@ By calling `plot_clust_hm()` for a clusterin analysis object, a heat map represe
   
 </details>
 
-## Clustering variable importance
+### Clustering variable importance
 
 <details>
 Permutation variable importance as proposed by Breiman for machine learning algorithms can be applied directly to clusterin analyses. The principle is quite simple: we're comparing quality fo clustering of the genuine clustering structure with a clustering objects fitted to the data set with one of the variables reshuffled by random. This procedure is repeated for all clusetring features and may run in several iterations exclude random unexpecte results. In `clustTools`, permutation variable importance is computed with the `impact()` function for explained clustering variance as loss function, i.e. the metric used to compare the input and reshuffled clustering structure. Of importance, this procedue can be done only for clustering objects fitted to the training data set and not for predictions. The computation for multiple iterations can be accelerated by launching he function in parallel. The results can be visualized by calling `plot()` and their wrpa-up retirieved by `summary()`:
@@ -736,7 +736,7 @@ As inferred from the summary table and the plot, the variable `V6` is by far the
 
 </details>
 
-## Density clustering
+### Density clustering
 
 <details>
 
@@ -861,9 +861,488 @@ Interestingly, the UMAP - DBSCAN procedure overfits massively as demonstrated by
 
 </details>
 
-## Self-organizing maps
+### Self-organizing maps
 
 <details>
+Self-organizing maps or SOM represent a Swiss army knife for dimensionality reduction and clustering. The algorithm based on the neural network principle was proposed by Teuvo Kohonen and implemented in R by the excellent package `kohonen` by Wehrens and colleagues. The output of the SOM algorithm is a set of vectors, so called 'codebook vectors' storing positions of SOM nodes (called also 'winning units') and, hence, a simplified, 'reduced' form of the input data set. As proposed by Juha Vesanto some 20 years ago, the matrix of distances between the codebook vectors, so called 'U matrix' may be tackled by traditional unsupervised clustering algorithms such as hierarchical or kmeans clustering. From my own experience, such combined SOM - unsupervised clustering procedure is especially useful at handling high-dimension data such as gene expression matrices of flow cytometry measurmenents. 
+
+The `clustTool` package integrates the SOM concept, SOM tools provided by the `kohonen` package and unsupervised clustering functions in a comprehensive workflow. In the current example, we'll use the combined SOM - PAM clustering to classify Italian wines listed in the UCI's `wines` data set based on their physical and chemical properties. The preprocessing will include elimination of non-variant features and normalization with median centering of the clustering variables (function `center_data()` from the `clustTools` package). The training subset will consist of 100 randomly selected observations, and will be used for tuning of the clustering algorithm. The test portion will be used solely for validation of the clustering structure.
+
+```r
+  ## kohonen will be used for diagnostic plots
+  ## and as the data source
+  ##
+  ## the library order matters!
+
+  library(kohonen)
+
+  library(tidyverse)
+  library(clustTools)
+  library(somKernels)
+  library(caret)
+
+  ## patchwork for stitching the plots
+
+  library(patchwork)
+
+  ## the wines dataset pre-processing: elimination of invariant features
+  ## (low variance to mean ratio) and median centering
+
+  data("wines")
+
+  my_wines <- wines %>%
+    as.data.frame %>%
+    mutate(ID = paste0('wine_', 1:nrow(.))) %>%
+    column_to_rownames('ID')
+
+  distr_stats <- my_wines %>%
+    map_dfr(~tibble(variance = var(.x),
+                    mean = mean(.x),
+                    var_mean_ratio = var(.x)/mean(.x))) %>%
+    mutate(variable = names(my_wines)) %>%
+    relocate(variable)
+
+  top_variant_features <- distr_stats %>%
+    filter(var_mean_ratio > 0.1) %>%
+    .$variable
+
+  my_wines <- my_wines %>%
+    select(all_of(top_variant_features)) %>%
+    center_data('median')
+
+  ## appending the parental data frame with wine classification
+  ## it will be used for the final validation of the results
+
+  my_wines <- my_wines %>%
+    mutate(vintage = vintages)
+
+  ## training: 100 randomly chosen observations
+  ## the rest used for validation#
+  ## created with caret's createDataPartition() to keep
+  ## the vintage distribution
+
+  set.seed(12345)
+
+  train_ids <- createDataPartition(my_wines$vintage, p = 100/177)[[1]]
+
+  wine_lst <-
+    list(train = my_wines[train_ids, ],
+         test = my_wines[-train_ids, ]) %>%
+    map(select, -vintage)
+
+```
+
+As before, we're checking the clustering tendency with Hopkins statistic using `get_clust_tendency()`. With the statistic values in the 0.65 - 0.7 range, only weak clustering tendency of both training and test data subsets can be inferred. 
+
+```r
+clust_tendency <- wine_lst %>%
+    map(get_clust_tendency,
+        n = 60)
+```
+```r
+> clust_tendency$train$hopkins_stat
+[1] 0.6983034
+> clust_tendency$test$hopkins_stat
+[1] 0.6566695
+```
+We are constructing three SOM-clusetring objects employing $5 \times 4$ hexagonal SOM grids to generate U matrices with Euclidean, Manhattan and cosine distances. The U-matrices will be subsequently clustered with the PAM procedure with 3 clusters as an intial guess. The construction step is accomplished with the `combi_cluster()` function returning a `combi_analysis` object. As we'll see in a moment, `combi_analysis` objects share the same quality control, validation, prediction, visualization and variable importance framework with other clustering analyses done with the `clustTools` package.
+
+```r
+
+algos <- list()
+
+  algos$som_pam_euclidean <-
+    combi_cluster(data = wine_lst$train,
+                  distance_som = 'euclidean',
+                  xdim = 5,
+                  ydim = 4,
+                  topo = 'hexagonal',
+                  neighbourhood.fct = 'gaussian',
+                  toroidal = FALSE,
+                  rlen = 2000,
+                  node_clust_fun = kcluster,
+                  k = 3,
+                  clust_fun = 'pam')
+
+  algos$som_pam_manhattan <-
+    combi_cluster(data = wine_lst$train,
+                  distance_som = 'manhattan',
+                  xdim = 5,
+                  ydim = 4,
+                  topo = 'hexagonal',
+                  neighbourhood.fct = 'gaussian',
+                  toroidal = FALSE,
+                  rlen = 2000,
+                  node_clust_fun = kcluster,
+                  k = 3,
+                  clust_fun = 'pam')
+
+  algos$som_pam_cosine <-
+    combi_cluster(data = wine_lst$train,
+                  distance_som = 'cosine',
+                  xdim = 5,
+                  ydim = 4,
+                  topo = 'hexagonal',
+                  neighbourhood.fct = 'gaussian',
+                  toroidal = FALSE,
+                  rlen = 2000,
+                  node_clust_fun = kcluster,
+                  k = 3,
+                  clust_fun = 'pam')
+
+```
+The first step of quality control is to check if SOM converged. This can be easily done by plotting the mean distance of observations to the SOM node as a function of algorithm iterations. A substantial reduction of the distance followed by a plateau suggests convergence of the algorithm. Such distance plots are generated by `plot(type = 'training')` and as presented in the graphic below, SOM with all of Euclidean, Manhattan and cosine distances converged within 2000 iterations of the algorithm. If this is not the case, you may consider increasing the `rlen` paramater values in the `combi_cluster()` function.
+
+```r
+
+  ## the training plots are stored by the 'observation' element
+  ## there are warnings generated that the training plots can not be generated
+  ## for SOM nodes, but you can ignore them
+  ##
+  ## The plot() function retugns a list of ggplot pbjects
+  ## which are easy to customized by the user
+
+  som_convergence_plots <- algos %>%
+    map(plot, type = 'training') %>%
+    map(~.x$observation +
+          theme(plot.tag = element_blank(),
+                legend.position = 'none')) %>%
+    map2(., c('SOM/HCL, Euclidean distance',
+              'SOM/HCL, Manhattan distance',
+              'SOM/HCL, cosine distance'),
+         ~.x +
+           labs(title = .y,
+                subtitle = 'SOM training convergence'))
+
+```
+```r
+  som_convergence_plots$som_pam_euclidean +
+    som_convergence_plots$som_pam_manhattan +
+    som_convergence_plots$som_pam_cosine +
+    plot_layout(ncol = 2)
+```
+
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/5a86e00c-af71-42a1-8456-b973e79ba50d)
+
+In the next step, we're verifying, if our cluster number guess holds by comparing mean slhouette widths for clustering of the SOM nodes with varying cluster numbers. This can be done by calling `plot(type = 'diagnostic')` for a `combi_analysis` object. As for the remaining clustering analysis types, this function returns a list of diagnostic plots for the observation clustering by SOM (element 'observation') and for the SOM node clustering by PAM (element 'node' of the list). For deetrmination of the cluster number for node clustering, the node diagnostic plots are needed.
+
+```r
+ node_cluster_number_plots <- algos %>%
+    map(plot, type = 'diagnostic') %>%
+    map(~.x$node$silhouette +
+          theme(plot.tag = element_blank())) %>%
+    map2(., c('SOM/HCL, Euclidean distance',
+              'SOM/HCL, Manhattan distance',
+              'SOM/HCL, cosine distance'),
+         ~.x +
+           scale_y_continuous(limits = c(0, 0.65)) +
+           labs(title = .y,
+                subtitle = 'SOM node clustering'))
+```
+
+```r
+node_cluster_number_plots$som_pam_euclidean +
+    node_cluster_number_plots$som_pam_manhattan +
+    node_cluster_number_plots$som_pam_cosine +
+    plot_layout(ncol = 2)
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/0bf99fe0-d3a7-4292-9151-3d3290918020)
+
+In the graphic panel above, the red dashed lines indicate the guessed number of clusters and the blue ones represent the optimal cluster number based on the peak of the silhouette statistic. With the cosine distance, our cluster number guess seems to be resonable. In turn, k = 2 clusters will likely work better for the clustering solutions with Euclidean and Manhattan distances. 
+
+In order to select the algorithm with the largest explanatory value and the best separation between the clusters, we'll compare the explained clustering variance and mean silhouette statistic in 5-fold cross-validation. Generally, cross-validation for `combi_analysis` objects is in a similar way as for 'simple' clustering analyses, by calling the `cv()` function. Yet, because SOM is principally a neuronal network, we can use this trained structure to predict the node assignment for new data. Hence, we'll set the `type` argument to `som`:
+
+```r
+  ## SOM prediction method is recommended
+
+  algos_cv <- algos %>%
+    map(cv, type = 'som') %>%
+    map(summary) %>%
+    map(select, ends_with('mean'))
+```
+```r
+> algos_cv
+$som_pam_euclidean
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1         0.402      0.598         0.561          0.247
+
+$som_pam_manhattan
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1         0.116      0.884         0.630          0.289
+
+$som_pam_cosine
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1        0.0591      0.941         0.708          0.440
+
+```
+Similar to other clustering algorithms using an intial random placement of cluster centers or nodes, there's little concordance of the cluster assignment between the genuine clustering structure and the cluster assignment in the cross-validation folds. This results in a poor accuracy and large classification error. Still, the explained clustering variance and mean silhouette width may be used to compare the algorithms. In such comparison, the SOM/PAM/cosine procedure is characterized by the largest fraction of explained variance and the best cluster separation measured by silhouette width. 
+
+The SOM/PAM/cosine clustering solution will be subsequently used to for semi-supervised clustering aiming at prediction of the cluster assignment of the test portion of the `wines` data set. As above, the prediction will be done with the trained SOM network with `predict(type = 'som')`:
+
+```r
+
+  ## working with the best performing SOM/PAM/cosine algorithm
+
+  cosine_clusters <- list()
+
+  cosine_clusters$train <- algos$som_pam_cosine
+
+  ## prediction of the cluster assignment for the test
+  ## subset of the wines data set. Using the recommended
+  ## SOM prediction method
+
+  cosine_clusters$test <- predict(cosine_clusters$train,
+                                  newdata = wine_lst$test,
+                                  type = 'som')
+
+```
+The `predict()` function applied to `combi_analysis` objects returns `clust_analysis` objects, for which clustering variance, silhouette and plots can be retrieved as presented before for 'simple' hierarchical, kmeans and PAM clustering. 
+For instance, the cluster structures for the training and test subsets display quit comparable clustering variances and mean silhouette values, as well as the numbers of potentially misclassified observations with negative silhouette values:
+
+```r
+  ## comparison of variances and silhouette widths
+  ## in the training and test data portions
+
+  cosine_variance <- cosine_clusters %>%
+    map(var) %>%
+    map_dbl(~.x$frac_var)
+
+  cosine_silhouettes <- cosine_clusters %>%
+    map(silhouette) %>%
+    map(summary)
+```
+
+```r
+> cosine_variance
+    train      test 
+0.6981659 0.7477879
+
+> cosine_silhouettes
+$train
+# A tibble: 4 × 13
+  clust_id     n n_negative perc_negative  mean    sd median    q025   q25   q75  q975    min   max
+  <fct>    <int>      <int>         <dbl> <dbl> <dbl>  <dbl>   <dbl> <dbl> <dbl> <dbl>  <dbl> <dbl>
+1 global     102          5          4.90 0.476 0.237  0.560 -0.148  0.355 0.655 0.737 -0.263 0.747
+2 1           42          2          4.76 0.517 0.231  0.612 -0.0248 0.388 0.685 0.745 -0.263 0.747
+3 2           23          1          4.35 0.335 0.207  0.384 -0.0614 0.176 0.505 0.622 -0.137 0.647
+4 3           37          2          5.41 0.516 0.232  0.602 -0.167  0.492 0.647 0.723 -0.229 0.734
+
+$test
+# A tibble: 4 × 13
+  clust_id     n n_negative perc_negative  mean    sd median    q025   q25   q75  q975    min   max
+  <fct>    <int>      <int>         <dbl> <dbl> <dbl>  <dbl>   <dbl> <dbl> <dbl> <dbl>  <dbl> <dbl>
+1 global      74          2          2.70 0.522 0.233  0.580 -0.0171 0.376 0.703 0.759 -0.284 0.766
+2 1           27          0          0    0.610 0.155  0.676  0.273  0.545 0.722 0.764  0.216 0.766
+3 2           21          2          9.52 0.296 0.241  0.372 -0.284  0.181 0.433 0.559 -0.284 0.562
+4 3           26          0          0    0.613 0.164  0.695  0.270  0.549 0.731 0.743  0.209 0.751
+```
+We can easily visualize pairwise distances between the observations and SOM nodes (i.e. the U matrix) in form of heat maps by calling `plot(type = 'heat_map')`:
+
+```r
+  ## U-matrix plots are available only for the training data
+  ## and are stored in the 'node' element of the output plot list
+
+  cosine_umatrix_hm <- plot(cosine_clusters$train,
+                            type = 'heat_map')$node +
+    labs(title = 'SOM/PAM, cosine distance',
+         subtitle = 'U-matrix clustering, wines training subset') +
+    theme(axis.text = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_blank(),
+          plot.tag = element_blank(),
+          legend.position = 'bottom')
+
+  ## test subset: heat map of pairwise distances between observations
+
+  cosine_test_hm <- plot(cosine_clusters$test,
+                         type = 'heat_map') +
+    labs(title = 'Predictions',
+         subtitle = 'Distances between observations, wines test subset') +
+    theme(axis.text = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_blank(),
+          plot.tag = element_blank(),
+          legend.position = 'bottom')
+```
+
+```r
+  cosine_umatrix_hm +
+    cosine_test_hm
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/86006d9b-8036-4531-b8be-ae03ab72a66d)
+
+`plot()` can be also employed to obtain plots of UMAP layouts of the training and test data subsets:
+
+```r
+  cosine_umap_plots <- cosine_clusters %>%
+    map(plot,
+        type = 'components',
+        kdim = 2,
+        with = 'data',
+        red_fun = 'umap')
+
+  ## for the training data subset:
+  ## a list of UMAP layout plots is returned, we need only
+  ## only the UMAP layout for the observations with color coding
+  ## of the cluster assignment
+
+  cosine_umap_plots$train <- cosine_umap_plots$train$final
+
+  cosine_umap_plots <-
+    map2(cosine_umap_plots,
+         c('SOM/PAM, cosine distance, training',
+           'SOM/PAM, cosine distance, test'),
+         ~.x +
+           labs(title = .y) +
+           theme(plot.subtitle = element_blank(),
+                 plot.tag = element_blank(),
+                 legend.position = 'bottom'))
+```
+```r
+  cosine_umap_plots$train +
+    cosine_umap_plots$test
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/e2e3e989-d897-4e71-9264-e82e04395b53)
+
+Heat map representations of the clustering variable levels can be obtained with `plot_clust_hm()`:
+
+```r
+
+  cosine_feature_hm <- cosine_clusters %>%
+    map(plot_clust_hm) %>%
+    map2(., c('SOM/PAM, cosine distance, training',
+              'SOM/PAM, cosine distance, test'),
+         ~.x +
+           labs(title = .y) +
+           scale_fill_gradient2(low = 'steelblue',
+                                mid = 'black',
+                                high = 'firebrick',
+                                midpoint = 0,
+                                limits = c(-3, 3),
+                                oob = scales::squish) +
+           theme(axis.text.x = element_blank(),
+                 axis.ticks.x = element_blank(),
+                 axis.line.x = element_blank(),
+                 legend.position = 'bottom'))
+
+```
+
+```r
+  cosine_feature_hm$train + 
+    cosine_feature_hm$test
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/02e02181-51d5-43bf-842c-ef35cdb22b71)
+
+By calling `impact()`, the user can compute permutation variable importance the same way as for simpler clustering analyses - but only for the training clustering structure. In such analysis, content of flavonoids, proanthocyanins and proline, total phenol level and optical density ratio are indetified as the most important clustering variables for explanatory performance of the algorithm:
+
+```r
+  cosine_importance <- impact.combi_analysis(cosine_clusters$train,
+                                             n_iter = 50,
+                                             .parallel = TRUE)
+
+  plot(cosine_importance)
+
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/7ee0a38c-18c1-4ccc-9462-43246d3f7d9b)
+
+In the final analysis step of the `wine` data, we'll check for vintage classes in the clusters. As presented below, the cluster 1 consist primarily of Barolo wines, the cluster 2 includes almost exclusively Grignolino. Barbera and, to a lesser extent, Grignolino wines populate the cluster 3. 
+
+```r
+  ## assignment extraction works the same
+  ## way as for non-SOM analyses
+
+  vintage_assignment <- my_wines %>%
+    rownames_to_column('observation') %>%
+    select(observation, vintage)
+
+  cosine_assignment <- cosine_clusters %>%
+    map(extract, 'assignment') %>%
+    map(left_join, vintage_assignment, by = 'observation')
+
+  cosine_counts <- cosine_assignment %>%
+    map(count, clust_id, vintage)
+```
+```r
+> cosine_counts
+$train
+# A tibble: 5 × 3
+  clust_id vintage        n
+  <fct>    <fct>      <int>
+1 1        Barolo        33
+2 1        Grignolino     9
+3 2        Grignolino    23
+4 3        Barbera       28
+5 3        Grignolino     9
+
+$test
+# A tibble: 7 × 3
+  clust_id vintage        n
+  <fct>    <fct>      <int>
+1 1        Barolo        23
+2 1        Grignolino     4
+3 2        Barolo         2
+4 2        Grignolino    19
+5 3        Barbera       20
+6 3        Grignolino     6
+7 NA       Grignolino     1
+```
+Interestingly, one Grignolino sample in the training subset cuold not be assigned to any cluster defined in the training portion of the data.
+
+Let's compare the observed vintage assignment with the predominant cluster vintages in a more formal inter-rater and reveiver operating characteristic analysis done with caret's `multiClassSummary()`:
+
+```r
+  ## kappa and ROC analysis
+  ## renaming of the clusters after
+  ## the predominant wine type
+
+  cosine_assignment <- cosine_assignment %>%
+    map(mutate,
+        obs = vintage,
+        pred = car::recode(clust_id,
+                           "'1' = 'Barolo';
+                           '2' = 'Grignolino';
+                           '3' = 'Barbera'"),
+        pred = factor(pred,
+                      levels = c('Barbera', 'Barolo', 'Grignolino')))
+
+  cosine_roc <- cosine_assignment %>%
+    map(as.data.frame) %>%
+    map(multiClassSummary,
+        lev = c('Barbera', 'Barolo', 'Grignolino'))
+```
+```r
+> cosine_roc
+$train
+              Accuracy                  Kappa                Mean_F1       Mean_Sensitivity       Mean_Specificity 
+             0.8235294              0.7391675              0.8200962              0.8536585              0.9159812 
+   Mean_Pos_Pred_Value    Mean_Neg_Pred_Value         Mean_Precision            Mean_Recall    Mean_Detection_Rate 
+             0.8474903              0.9240506              0.8474903              0.8536585              0.2745098 
+Mean_Balanced_Accuracy 
+             0.8848199 
+
+$test
+              Accuracy                  Kappa                Mean_F1       Mean_Sensitivity       Mean_Specificity 
+             0.8378378              0.7581699              0.8380602              0.8583908              0.9209373 
+   Mean_Pos_Pred_Value    Mean_Neg_Pred_Value         Mean_Precision            Mean_Recall    Mean_Detection_Rate 
+             0.8419482              0.9229225              0.8419482              0.8583908              0.2792793 
+Mean_Balanced_Accuracy 
+             0.8896640 
+```
+  
+</details>
+
+### Handling multi-layer data with self-organizing maps
+
+<details>
+
 
   
 </details>
@@ -884,3 +1363,6 @@ Interestingly, the UMAP - DBSCAN procedure overfits massively as demonstrated by
 12. Breiman L. Random forests. Mach Learn (2001) 45:5–32. doi:10.1023/A:1010933404324
 13. Hahsler M, Piekenbrock M, Doran D. Dbscan: Fast density-based clustering with R. J Stat Softw (2019) 91:1–30. doi:10.18637/jss.v091.i01
 14. Belyadi H, Haghighat A, Nguyen H, Guerin A-J. IOP Conference Series: Earth and Environmental Science Determination of Optimal Epsilon (Eps) Value on DBSCAN Algorithm to Clustering Data on Peatland Hotspots in Sumatra Related content EPS conference comes to London-EPS rewards quasiparticle research-EP. IOP Conf Ser Earth Environ Sci (2016) 31: doi:10.1088/1755-1315/31/1/012012
+15. Kohonen T. Self-Organizing Maps. Berlin, Heidelberg: Springer Berlin Heidelberg (1995). doi:10.1007/978-3-642-97610-0
+16. Vesanto J, Alhoniemi E. Clustering of the self-organizing map. IEEE Trans Neural Networks (2000) 11:586–600. doi:10.1109/72.846731
+17. Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0. J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
