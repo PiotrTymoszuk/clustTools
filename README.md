@@ -1342,6 +1342,125 @@ Mean_Balanced_Accuracy
 ### Handling multi-layer data with self-organizing maps
 
 <details>
+As discussed in mode details in by the authors of the `kohonen` package (see Wehrens et al. in the reference list), SOM are well suited to handle multi-layer data sets. Such layers may consist of variables in various formats (e.g. binary and ordinal layer) or features concerning diverse properties of the investigated objects (e.g. position and RGB color of pixels in a picture). In the following example we will apply this SOM-based multi-layer approach to clusetr the `Cars93` data set provided by the R package `MASS`. In brief, the data layers will be defined by teh variable character and consist of (1) numeric features such as horsepower or weight, (2) ordinal/count variables like number of passengers or airbags, and (3) binary such as manual transmission or US origin. Since the data set is pretty small, we won't validate the results in a 'clean' hold-out setting and stay with cros-validation.
+
+```r
+
+  ## Cars93 retrieved from MASS
+  ## the package order matters!
+
+  library(MASS)
+  library(kohonen)
+
+  library(tidyverse)
+  library(clustTools)
+  library(somKernels)
+
+  ## patchwork for plot panels
+
+  library(patchwork)
+
+  ## the Cars93 data set. No hold-out, cross-validation user instead,
+  ## since it is a pure explanatory analysis
+  ##
+  ## we'll check if multi-layer SOM clustering can recapitulate
+  ## car classification provided by the `Type` variable
+
+  my_cars <- MASS::Cars93 %>%
+    select(Make, Type, Price,
+           MPG.city, MPG.highway,
+           AirBags, DriveTrain,
+           Cylinders, EngineSize, Horsepower,
+           Man.trans.avail, Man.trans.avail,
+           Fuel.tank.capacity, Passengers,
+           Length, Weight, Origin) %>%
+    as_tibble
+
+  ## formatting factor variables
+
+  my_cars <- my_cars %>%
+    mutate(AirBags = car::recode(AirBags,
+                                 "'None' = '0';
+                                 'Driver only' = '1';
+                                 'Driver & Passenger' = '2'",
+                                 as.factor = FALSE),
+           AirBags = as.numeric(AirBags),
+           Man.trans.avail = car::recode(Man.trans.avail,
+                                         "'No' = '0';
+                                         'Yes' = '1'",
+                                         as.factor = FALSE),
+           Man.trans.avail = as.numeric(Man.trans.avail),
+           Origin = car::recode(Origin,
+                                "'USA' = '1';
+                                'non-USA' = '0'",
+                                as.factor = FALSE),
+           Origin = as.numeric(Origin),
+           Cylinders = as.numeric(Cylinders))
+
+  my_cars <- my_cars %>%
+    filter(complete.cases(.))
+
+  ## data layers: numeric, ordinal and binary
+  ## based on the variable class. Numeric and ordinal variables
+  ## are normalized and median-centered
+
+  car_lst <-
+    list(numeric = c('Price', 'MPG.city', 'MPG.highway', 'EngineSize',
+                     'Horsepower', 'Fuel.tank.capacity', 'Length',
+                     'Weight'),
+         ordinal = c('AirBags', 'Cylinders', 'Passengers'),
+         binary = c('Man.trans.avail', 'Origin')) %>%
+    map(~my_cars[c(.x, 'Make')]) %>%
+    map(column_to_rownames, 'Make')
+
+  car_lst[c("numeric", "ordinal")] <-
+    car_lst[c("numeric", "ordinal")] %>%
+    map(center_data, type = 'median')
+
+```
+The data set has a moderate clustering tendency as investigated by `get_clust_tendency()`. 
+
+Fitting of SOM with subsequent clustering of the U matrix, i.e. matrix of distances between the SOM nodes is done with a dedicated functon of the `clustTools` package: `multi_cluster()`. Its syntax is quite similar to `combi_cluster()`. Note, that the function allows for definition of separate distance measures for each data layer via the `distance_method` argument. In our case, the numeric layer will be clustered with cosine, the ordinal layer with Manhattan and the binary layer with Tanimoto distance. Additional arguments that control the SOM behavior are passed by a named list via the `som_args` argument: here, we are defining a custom learning rate `alpha`, weights for the layers via `user.weights` and telling the SOM algorithm to apply the user#s layer weights directly to the data layers by specifying `normalizeDataLayers = FALSE`. Clusetering of the U matrix is done with PAM implemented by the `kcluster()` function.
+
+```r
+
+  ## the layers will be handled by three various distances:
+  ## Euclidean for numeric variables, Manhattan for ordinal variables
+  ## and Tanimoto for binary features
+
+  car_som <-
+    multi_cluster(data = car_lst,
+                  distance_method = c('cosine', 'manhattan', 'tanimoto'),
+                  xdim = 6,
+                  ydim = 7,
+                  topo = 'hexagonal',
+                  neighbourhood.fct = 'gaussian',
+                  toroidal = FALSE,
+                  rlen = 3000,
+                  som_args = list(mode = 'online',
+                                  alpha = c(0.01, 0.2),
+                                  user.weights = c(1, 1, 0.5),
+                                  normalizeDataLayers = FALSE),
+                  node_clust_fun = kcluster,
+                  k = 3,
+                  clust_fun = 'pam')
+
+```
+As demonstrated before, we're checking convergence of the SOM algorithm by calling `plot(type = 'training')`. We're customizing the training plot to present the training curve for each layer in a separate plot facet:
+
+```r
+  car_convergence <- plot(car_som, type = 'training')
+
+  car_convergence <- car_convergence$observation +
+    facet_grid(`SOM layer` ~ .,
+               scales = 'free') +
+    theme(plot.tag = element_blank(),
+          legend.position = 'none')
+
+  car_convergence
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/08707459-5b8a-4272-9c16-b1f30bc143c3)
+
 
 
   
