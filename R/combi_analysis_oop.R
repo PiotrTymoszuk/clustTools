@@ -111,8 +111,8 @@
 
       plot_list$observation <-
         plot_list$observation +
-        labs(tag = paste('Iterations: n =',
-                         nrow(x$clust_analyses$observation$clust_obj$changes)))
+        ggplot2::labs(tag = paste('Iterations: n =',
+                                  nrow(x$clust_analyses$observation$clust_obj$changes)))
 
     }
 
