@@ -7,7 +7,7 @@ Comprehensive dimensionality reduction and cluster analysis toolset
 
 ## Description
 
-The `clustTools` package provides a medley of functions used for seemless integration of various dimensionality reduction methods (multi-dimensional scaling/MDS, principal component analysis/PCA, uniform manifold approximation and projection/UMAP or factor analysis/FA), clustering (hierarchical clustering, K-means, PAM and density DBSCAN clustering) and self-orgnizing map (SOM) analyses. In addition, a set of functions is provided for visualization, quality control and cross-validation of the clustering results and semi-supervised clusetring.
+The `clustTools` package provides a medley of functions used for seemless integration of various dimensionality reduction methods (multi-dimensional scaling/MDS, principal component analysis/PCA, uniform manifold approximation and projection/UMAP or factor analysis/FA), clustering (hierarchical clustering, K-means, PAM and density DBSCAN clustering) and self-orgnizing map (SOM) analyses. In addition, a set of functions is provided for visualization, quality control and cross-validation of the clustering results and semi-supervised clustering.
 
 ## Installation
 
@@ -38,7 +38,7 @@ The package maintainer is [Piotr Tymoszuk](mailto:piotr.s.tymoszuk@gmail.com).
 
 <details>
 
-`clustTools` represents a one-stop shop for construction, diagnostic and validation of clustering solutions, which are scattered between many excellent R packages. Let's take a look at its basic functionalities by semi-supervised clustering of the `biopsy` data set insluded in the R's `MASS` package. This portion of data stores results of a clinical study on breast lesion biopsies, which are classified as benign or malignant based on 9 morphological and cytological variables assessed by a pathologist on a 1 - 10 scale each. The `biopsy` data set will be split into a training and test portion. I'll use the training portion for choice of the best performing clustering algorithm and cluster number. The test portion will be used for the final validation of the clustering results. The algorithms of interest are Ward's hierarchical clustering (internally implemented by `stats`), kmeans (`stats` package) and PAM (partitioning around medoids, package `cluster`). 
+`clustTools` represents a one-stop shop for construction, diagnostic and validation of clustering solutions, which are scattered between many excellent R packages. Let's take a look at its basic functionalities by semi-supervised clustering of the `biopsy` data set included in the R's `MASS` package. This portion of data stores results of a clinical study on breast lesion biopsies, which are classified as benign or malignant based on 9 morphological and cytological variables assessed by a pathologist on a 1 - 10 scale each. The `biopsy` data set will be split into a training and test portion. I'll use the training portion for choice of the best performing clustering algorithm and cluster number. The test portion will be used for the final validation of the clustering results. The algorithms of interest are Ward's hierarchical clustering (internally implemented by `stats`), kmeans (`stats` package) and PAM (partitioning around medoids, package `cluster`). 
 
 ```r
 
@@ -109,7 +109,7 @@ The package maintainer is [Piotr Tymoszuk](mailto:piotr.s.tymoszuk@gmail.com).
     map(select, starts_with('V'))
 
 ```
-I'm checking first the clustering tendency of the training and test data subsets with the [Hopkins statistic](https://en.wikipedia.org/wiki/Hopkins_statistic) with the `get_clust_tendency()` functions implemented in the great package `factoextra`. Of note, Hopkins statistic ranges from 0 (completely homogenous distribution) to 1 (highly clustered distribution). Values around 0.5 indicate a random normal-like ditribution. With the Hopkins statistic values of approximately 0.7, the `biopsy` data set demonstrates a weak-to-moderate clustering tendency:
+I'm checking first the clustering tendency of the training and test data subsets with the [Hopkins statistic](https://en.wikipedia.org/wiki/Hopkins_statistic) computed with the `get_clust_tendency()` function implemented in the package `factoextra`. Of note, Hopkins statistic ranges from 0 (completely homogenous distribution) to 1 (highly clustered distribution). Values around 0.5 indicate a random normal-like ditribution. With the Hopkins statistic values of approximately 0.7, the `biopsy` data set demonstrates a weak-to-moderate clustering tendency:
 
 ```r
 
@@ -124,7 +124,7 @@ biopsy_clust_tendency <- biopsy_lst %>%
 [1] 0.7307125
 ```
 
-I'm using the `clustTools` functions `hcluster()` and `kcluster()` to cluster the training portion of the data set with the hierarchical clusetring, kmeans and PAM. I'm also trying two distance measures: Euclidean and cosine. The initially guessed cluster number is set to `k = 2` as expected for the data set containing two types of samples. Importantly, those clustering functions take numeric data frames or matrices as the first argument and return objects of `clust_analysis` class, which can be, irrespectively of the clustering algorithm, subjected to a consistent quality control and validation.
+I'm using the `clustTools` functions `hcluster()` and `kcluster()` to cluster the training portion of the data set with hierarchical clusetring, kmeans and PAM. I'm also testing two distance measures: Euclidean and cosine. The initially guessed cluster number is set to `k = 2` as expected for the data set containing two types of samples. Importantly, those clustering functions take numeric data frames or matrices as the first argument and return objects of `clust_analysis` class, which can be, irrespective of the clustering algorithm, subjected to consistent quality control and validation.
 
 ```r
 
@@ -241,7 +241,7 @@ obs_400_1238948     0.08462418      0.15371658      0.19244959       0.1800975  
 
 <details>
 
-The package offers a visual help for verifying your cluster number guess. By calling `plot(type = 'diagnostic')` for a `clust_analysis` object, plots of dendrograms (hierarchical clustering only), within-cluster sum of squares and mean silhouette statistic values for clustering structures with varyiing cluster numbers can retrieved. All plots generated with the package's tools are `ggplot` graphical objects and can be easily customized by the user:
+The package offers a visual helper for verifying the initial cluster number guess. By calling `plot(type = 'diagnostic')` for a `clust_analysis` object, plots of dendrograms (hierarchical clustering only), within-cluster sum of squares and mean silhouette statistic values for clustering structures with varying cluster numbers can retrieved. All plots generated with the package's tools are `ggplot` graphical objects and can be easily customized by the user:
 
 ```r
 
@@ -274,7 +274,7 @@ The package offers a visual help for verifying your cluster number guess. By cal
 ```
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/c4fee14a-00d9-4062-b4ba-31bb9c662feb)
 
-As indicated by the two main branches of the dendrogram, the bend of the within-cluster sum of square curve, and the peak of the mean [silhouette statistic](https://en.wikipedia.org/wiki/Silhouette_(clustering)), the two-cluster solution seem to be a resonable guess.
+As indicated by the two main branches of the dendrogram, the bend of the within-cluster sum of square curve, and the peak of the mean [silhouette statistic](https://en.wikipedia.org/wiki/Silhouette_(clustering)), the two-cluster solution seem resonable.
 
 </details>
 
@@ -284,11 +284,11 @@ As indicated by the two main branches of the dendrogram, the bend of the within-
 
 The package offers basically two numeric measures of cluster quality:
 
-* [silhouette statistic](https://en.wikipedia.org/wiki/Silhouette_(clustering)), which gauges the quality of discrimination between the clusters
+* [silhouette statistic](https://en.wikipedia.org/wiki/Silhouette_(clustering)), which gauges discrimination between the clusters
 
-* _explained clustering variance_ defined as a ratio of the total between-cluster sum of squares to the total sum of squares. As such, explained clustering variance works in a similar way to R^2 or ANOVA
+* _explained clustering variance_ defined as a ratio of the total between-cluster sum of squares to the total sum of squares. As such, explained clustering variance works in a similar way to R^2 or ANOVA's $\eta^2$ as a metric of explanatory performance
 
-Function `silhouette()` computes silhouette values for each observation, mean values for the whole object and particular clusters can be retrieved with the `summary` method. Genarally, silhouettes range from -1 to 1, with high values indicative of good separation of the given observation or cluster from other clusers:
+The `silhouette()` function computes silhouette values for each observation. Mean silhouette values for the whole object and particular clusters can be retrieved with the `summary()` method. Generally, silhouettes range from -1 to 1, with high values indicative of good separation of the given observation or cluster from other clusers. By contrast, negative silhouette widths suggest missclassified observations:
 
 ```r
 
@@ -312,7 +312,7 @@ For kmeans clustering of the `biopsy` training subset with cosine distance, low 
 ```
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/22525c18-e5ad-4a05-b449-b62031868e2e)
 
-In particular, 18% of the cluster 2 observations had negative statistic values, which indicate that they are most likely misclassified. 
+In particular, 18% of the cluster 2 observations had negative silhouette values, which indicates that they are most likely placed in a wrong cluster. 
 
 Let's compare mean silhouettes and clusetring variances for different clustering solutions. The later can be computed for `clust_analysis` objects by calling `var()` with the `frac_var` element of the result storing the fraction of explained clustering variance which concerns us most.
 
@@ -333,7 +333,7 @@ Let's compare mean silhouettes and clusetring variances for different clustering
     map_dbl(~.x$frac_var)
 
 ```
-In the `biopsy` data set, Euclidean distance yields a generally better separation between the clusters as the cosine metics as unequivocally demonstrated by mean silhouettes. The PAM/Euclidean solution has the lowest count of potentially misclassified observations with negative silhouette widths.
+In the `biopsy` data set, Euclidean distance yields a generally better separation between the clusters than the cosine metics as unequivocally demonstrated by mean silhouette value. The PAM/Euclidean solution has the lowest count of potentially misclassified observations with negative silhouette widths.
 
 ```r
 > cl_silhouettes
@@ -396,10 +396,10 @@ The `clustTools` package offers also a rich set of visual diagnostic tools. Heat
 
 <details>
 
-Unsupervised clustering objects resemble multi-parameter classification machine learning models in multiple aspects. By principle, they can be cross-validated just like any other machine learning models. In brief, in each cross-validation fold, the training portion is used for fitting of the clustering structure with the same algorithm as the parent clustering solution. The test portion of the fold is used for calculation of numeric stats and assessment of cluster assignment accuracy as compared with the parental clustering solution. Such approach has few advantages as compared with computation of numeric statistics only for the training data subset like a more robust handling of atypical observations and assessment of over-fitting. 
-The default method of assignment of test portion observations to the clusters defined in the trainig portion of the cross-validation fold is so-called k-nearest neighbor label propagation. This prediction algorithm is resonably fast and agnostic to the clustering procedure. 
+Unsupervised clustering objects resemble multi-parameter classification machine learning models in multiple aspects. By principle, they can be cross-validated just like any other machine learning model. In brief, in each cross-validation fold, the training portion is used for fitting of the clustering structure with the same algorithm as the parent clustering solution. The test portion of the fold is used for calculation of numeric stats and assessment of cluster assignment accuracy as compared with the parental clustering solution. Such approach has few advantages as compared with computation of numeric statistics only for the training data subset. for instance it is more robust at handling atypical observations and assessment of over-fitting. 
+The default method of assignment of the test portion observations to the clusters is the so-called k-nearest neighbor (kNN) label propagation. This prediction algorithm is resonably fast and agnostic to the clustering procedure. 
 
-Here, we'll cross-validate the `biopsy` training subset clustering objects generated with the best performing Euclidean distance. This is accomplished with the `cv()` function, which returns out-of-fold predictions, numeric statistics for the folds along with means and confidence intervals of cluster assignment accuracy, classification error, explained clustering variance and mean silhouette. The later statistics can be retrieved from the `cv()` output by calling `summary()`:
+Here, I'll cross-validate the `biopsy` clustering objects generated with the best performing Euclidean distance. This is accomplished with the `cv()` function, which returns out-of-fold predictions, numeric statistics for the folds along with means and confidence intervals of cluster assignment accuracy, classification error, explained clustering variance and mean silhouette. The means of statistics across all folds can be retrieved from the `cv()` output by calling `summary()`:
 
 ```r
 
@@ -434,7 +434,7 @@ $pam_euclidean
 
 ```
 
-In case of kmeans clustering and of other algorithms with stochastic determination of the initial cluster centers, the accuracy and classification error are expected to be poor. Still, we can use fractions of explained variations (`frac_var`) and mean silhouette widths (`sil_width`), to compare the clustering procedures. While all of them have similar discriminatory power, the kmeans/Euclidean colution displays the largest fraction of explained variance.
+In case of kmeans clustering and other algorithms with stochastic determination of the initial cluster centers, the accuracy and classification error are expected to be poor. Still, we can use fractions of explained variations (`frac_var`) and mean silhouette widths (`sil_width`), to compare the clustering procedures. While all of them have similar discriminatory power, the kmeans/Euclidean colution displays the largest fraction of explained variance.
   
 </details>
 
@@ -442,8 +442,8 @@ In case of kmeans clustering and of other algorithms with stochastic determinati
 
 <details>
 
-As for cross-validation, there's a possibility to apply the k-nearest neighbor (kNN) label propagation algorithm to predict the cluster assignment in a hold-out subset or external validation data set. Here we'll predict the cluster assignment defined by the kmeans/Euclidean clustering in the training portion for the test subset of the `biopsy` data set and check quality of the cluster assignment with explained clustering variance and silhouette width. 
-The prediction is done with the `predict()` function, which takes a clustering analysis object as the first argument and a numeric data frame or matrix as `newdata`; the `type` argument is set to 'propagation' for the kNN procedure. The output is an instance of `clust_analysis` class, which allows for direct comparison of the training and test data clustering.
+As for cross-validation, there's a possibility to apply the kNN label propagation algorithm for prediction of the cluster assignment in a hold-out subset or external validation data set. Here we'll predict the cluster assignment defined by the kmeans/Euclidean clustering in the training portion for the test subset of the `biopsy` data set and check quality of the cluster assignment with explained clustering variance and silhouette width. 
+The prediction is done with the `predict()` function, which takes a clustering analysis object as the first argument and a numeric data frame or matrix as `newdata`; the `type` argument is set to 'propagation' for the kNN procedure. The output is an instance of `clust_analysis` class, which allows for a direct comparison of the training and test data clustering.
 
 ```r
 
@@ -539,7 +539,7 @@ kmeans_cross_dists <-
 ```
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/4d0a1091-bb61-4e0e-bd22-d7b28e80dfa6)
 
-Finally, let's compare the distribution of malignant and benign samples between the clusters. This analysis reveals, that nearly all benign samples were assigned to the cluster 1 and malingnant samples were located in the cluster 2:
+Finally, let's compare the distribution of malignant and benign samples between the clusters. This analysis reveals, that nearly all benign samples were assigned to the cluster 1 and malignant samples were located in the cluster 2:
 
 ```r
 
@@ -583,10 +583,10 @@ $test
 4 2        malignant    98
 
 ```
-We can corroborate it further by computing accuracy, Cohen's kappa and receiver-operating characteristic with `caret`:
+We can corroborate it further by computing accuracy, Cohen's kappa and receiver-operating characteristic with `multiClassSummary()` provided by the `caret` package:
 
 ```r
-## kappa and ROC: I'm using `multiClassSummary()`
+  ## kappa and ROC: I'm using `multiClassSummary()`
   ## which takes a data frame with the `obs` and `pred`
   ## variables storing the observed and predicted outcome, respectively
   
@@ -630,11 +630,11 @@ $test
 
 <details>
 
-Visualization of clustering structure with help of dimensionality reduction methods has a long tradition. By calling `plot(type = 'components')` for a clustering analysis objects, the `clustTools` package generates a scatter plot of observations's scores associated with the first two dimensions of prlincipal component analysis (PCA), multi-dimensional scaling (MDS) or Uniform Manifold Approximation and Projection (UMAP). By default, the dimensionality reduction is done for the distance matrix, by specifying `with = 'data'`, the user can request it for the genuine data set.
+Visualization of a clustering structure with help of dimensionality reduction methods has a long tradition. By calling `plot(type = 'components')` for a clustering analysis objects, the `clustTools` package generates a scatter plot of observations's scores associated with the first two dimensions of prlincipal component analysis (PCA), multi-dimensional scaling (MDS) or Uniform Manifold Approximation and Projection (UMAP). By default, the dimensionality reduction is done for the distance matrix. By specifying `with = 'data'`, the user can request it for the genuine data set.
 
 ```r
 
-## plots of MDS of the distance matrix, as an alternative 
+ ## plots of MDS of the distance matrix, as an alternative 
   ## of distance heat map
   
   kmeans_mds_dist <- kmeans_clusters %>% 
@@ -671,7 +671,7 @@ Visualization of clustering structure with help of dimensionality reduction meth
 ```
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/d105f4b6-8f66-4421-bbc4-8705ef513d2f)
 
-By calling `plot_clust_hm()` for a clusterin analysis object, a heat map representation of clustering features is plotted. The color scale may be easily customized e.g. with ggplot's `scale_fill_gradient2()`:
+By calling `plot_clust_hm()` for a clustering analysis object, a heat map representation of the clustering features is plotted. The color scale may be easily customized e.g. with ggplot's `scale_fill_gradient2()`:
 
 ```r
 ## heat maps of clustering features
@@ -701,7 +701,7 @@ By calling `plot_clust_hm()` for a clusterin analysis object, a heat map represe
 ### Clustering variable importance
 
 <details>
-Permutation variable importance as proposed by Breiman for machine learning algorithms can be applied directly to clusterin analyses. The principle is quite simple: we're comparing quality fo clustering of the genuine clustering structure with a clustering objects fitted to the data set with one of the variables reshuffled by random. This procedure is repeated for all clusetring features and may run in several iterations exclude random unexpecte results. In `clustTools`, permutation variable importance is computed with the `impact()` function for explained clustering variance as loss function, i.e. the metric used to compare the input and reshuffled clustering structure. Of importance, this procedue can be done only for clustering objects fitted to the training data set and not for predictions. The computation for multiple iterations can be accelerated by launching he function in parallel. The results can be visualized by calling `plot()` and their wrpa-up retirieved by `summary()`:
+Permutation variable importance as proposed by Breiman for machine learning algorithms can be applied directly to clustering analyses. The principle is quite simple: we're comparing quality of the genuine clustering structure with a clustering object fitted to the data set with one of the variables reshuffled by random. This procedure is repeated for all clusetring features and may run in several iterations to exclude random unexpected results. In `clustTools`, permutation variable importance is computed with the `impact()` function for explained clustering variance as the loss function, i.e. the metric used to compare the input and reshuffled clustering structure. Of importance, this procedue can be done only for clustering objects fitted to the training data set and not for predictions. The computation in multiple iterations can be accelerated by launching he function in parallel. The results can be visualized by calling `plot()` and their wrap-up retrieved by `summary()`:
 
 ```r
 
@@ -732,7 +732,7 @@ kmeans_variable_importance <-
 ```
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/2225235a-26df-4c8b-a4bf-3f6d4feddb25)
 
-As inferred from the summary table and the plot, the variable `V6` is by far the most influential clustering variable.
+As inferred from the summary table and the plot, `V6` is by far the most influential clustering variable.
 
 </details>
 
@@ -740,11 +740,11 @@ As inferred from the summary table and the plot, the variable `V6` is by far the
 
 <details>
 
-Density clustering is implemented in the `clustTools` package by the DBSCAN algorithm. While its applicability to high dimension data is limited, it can robustly cope with with data subjected previously to dimensionality reduction e.g. with UMAP. To streamline the reduction - clustering workflow, nearly all clustering functions of the package can be coupled with the `reduce_data()` tool. In the following example, we'll subject the `biopsy` data set to UMAP and subsequently cluster the UMAP score layout with DBSCAN. Unlike for hierarchical clustering or mean/medoid clusetring, the user does not have to specify the cluster number. The clustering behavior is controlled with the `eps` parameter defining the distance threshold for noise observations and minPts specifying the size of the nearest neighborhood:
+Density clustering is implemented in the `clustTools` package by the DBSCAN algorithm. While its applicability to high dimension data is limited, it can robustly cope with data subjected previously to dimensionality reduction e.g. with PCA or UMAP. To streamline the reduction - clustering workflow, nearly all clustering functions of the package can be coupled with the `reduce_data()` tool. In the following example, we'll subject the `biopsy` data set to UMAP and subsequently cluster the UMAP score layout with DBSCAN. Unlike for hierarchical clustering or mean/medoid clustering, the user does not have to specify the cluster number. The clustering behavior is controlled by the `eps` parameter defining the distance threshold for noise observations and `minPts` specifying the size of the nearest neighborhood:
 
 ```r
 
-  ## generating the UMAP layouts for the training and test
+  ## generating UMAP layouts for the training and test
   ## portion of the data set
 
   biopsy_density <- biopsy_lst %>%
@@ -766,7 +766,7 @@ Density clustering is implemented in the `clustTools` package by the DBSCAN algo
                    minPts = 7)
 
 ```
-In a similar manner to hierarchical of kmeans clustering, the function `plot(type = 'diagnostic')` may be employed for setting the optimal `eps` value. Following the logics of Belyadi and colleagues, nois observations tend towards rapidly expanding k-nearest neighbor distance for noisy observations. Hence the optimal `eps` threshold should be placed just below the steep increase of the nearest neighbor distance plot. With `eps = 1`, we set the threshold obviously far too high:
+In a similar manner to hierarchical or kmeans clustering, the function `plot(type = 'diagnostic')` may be employed for setting the optimal `eps` value. Following the logics of Belyadi and colleagues, noisy observations tend towards rapidly expanding k-nearest neighbor distance. Hence the optimal `eps` threshold should be placed just below the steep increase of the nearest neighbor distance plot. With `eps = 1`, we set the threshold obviously too high:
 
 ```r
 > plot(biopsy_dbscan$training)
@@ -792,7 +792,7 @@ $knn_dist
 ```
 ![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/175191fb-039e-4599-8299-23f36f1c2b27)
 
-Numeric statistics, cross-validation and semi-supervised clustering are accomplished in the usual way. Let's check the luster predictions for the test portion of the `biopsy` data set:
+Numeric statistics, cross-validation and semi-supervised clustering are accomplished in the usual way. Let's check the cluster predictions for the test portion of the `biopsy` data set:
 
 ```r
  ## predictions
@@ -864,9 +864,9 @@ Interestingly, the UMAP - DBSCAN procedure overfits massively as demonstrated by
 ### Self-organizing maps
 
 <details>
-Self-organizing maps or SOM represent a Swiss army knife for dimensionality reduction and clustering. The algorithm based on the neural network principle was proposed by Teuvo Kohonen and implemented in R by the excellent package `kohonen` by Wehrens and colleagues. The output of the SOM algorithm is a set of vectors, so called 'codebook vectors' storing positions of SOM nodes (called also 'winning units') and, hence, a simplified, 'reduced' form of the input data set. As proposed by Juha Vesanto some 20 years ago, the matrix of distances between the codebook vectors, so called 'U matrix' may be tackled by traditional unsupervised clustering algorithms such as hierarchical or kmeans clustering. From my own experience, such combined SOM - unsupervised clustering procedure is especially useful at handling high-dimension data such as gene expression matrices of flow cytometry measurmenents. 
+Self-organizing maps or SOM represent a Swiss army knife for dimensionality reduction and clustering. The algorithm based on the neural network principle was proposed by Teuvo Kohonen and implemented in R by the excellent package `kohonen` by Wehrens and colleagues. The output of the SOM algorithm is a set of vectors, so called 'codebook vectors' storing positions of SOM nodes (called also 'winning units') and, hence, a simplified, 'reduced' form of the input data set. As proposed by Juha Vesanto some 20 years ago, the matrix of distances between the codebook vectors, so called 'U matrix' may be tackled by traditional unsupervised clustering algorithms such as hierarchical or kmeans clustering. From my own experience, such combined SOM - unsupervised clustering procedure is especially useful at handling high dimension data such as gene expression matrices of flow cytometry measurmenents. 
 
-The `clustTool` package integrates the SOM concept, SOM tools provided by the `kohonen` package and unsupervised clustering functions in a comprehensive workflow. In the current example, we'll use the combined SOM - PAM clustering to classify Italian wines listed in the UCI's `wines` data set based on their physical and chemical properties. The preprocessing will include elimination of non-variant features and normalization with median centering of the clustering variables (function `center_data()` from the `clustTools` package). The training subset will consist of 100 randomly selected observations, and will be used for tuning of the clustering algorithm. The test portion will be used solely for validation of the clustering structure.
+The `clustTool` package integrates the SOM concept, SOM tools provided by the `kohonen` package and unsupervised clustering functions in a comprehensive workflow. In the current example, I'll use the combined SOM - PAM clustering to classify Italian wines listed in the UCI's `wines` data set based on their physical and chemical properties. The preprocessing will include elimination of non-variant features and normalization with median centering of the clustering variables (function `center_data()` from the `clustTools` package). The training subset will consist of 100 randomly selected observations, and will be used for tuning of the clustering algorithm. The test portion will be used solely for validation of the clustering structure.
 
 ```r
   ## kohonen will be used for diagnostic plots
@@ -945,7 +945,7 @@ clust_tendency <- wine_lst %>%
 > clust_tendency$test$hopkins_stat
 [1] 0.6566695
 ```
-We are constructing three SOM-clusetring objects employing $5 \times 4$ hexagonal SOM grids to generate U matrices with Euclidean, Manhattan and cosine distances. The U-matrices will be subsequently clustered with the PAM procedure with 3 clusters as an intial guess. The construction step is accomplished with the `combi_cluster()` function returning a `combi_analysis` object. As we'll see in a moment, `combi_analysis` objects share the same quality control, validation, prediction, visualization and variable importance framework with other clustering analyses done with the `clustTools` package.
+We are constructing three SOM-clusetring objects employing $5 \times 4$ hexagonal SOM grids to generate U matrices with Euclidean, Manhattan and cosine distances. The U-matrices will be subsequently clustered with the PAM procedure with 3 clusters as an intial guess. The construction step is accomplished by the `combi_cluster()` function returning a `combi_analysis` object. As we'll see in a moment, `combi_analysis` objects share the same quality control, validation, prediction, visualization and variable importance framework with other clustering analyses done with the `clustTools` package.
 
 ```r
 
@@ -991,7 +991,7 @@ algos <- list()
                   clust_fun = 'pam')
 
 ```
-The first step of quality control is to check if SOM converged. This can be easily done by plotting the mean distance of observations to the SOM node as a function of algorithm iterations. A substantial reduction of the distance followed by a plateau suggests convergence of the algorithm. Such distance plots are generated by `plot(type = 'training')` and as presented in the graphic below, SOM with all of Euclidean, Manhattan and cosine distances converged within 2000 iterations of the algorithm. If this is not the case, you may consider increasing the `rlen` paramater values in the `combi_cluster()` function.
+The first step of quality control is to check if the SOM converged. This can be easily done by plotting mean distances of the observations to the SOM node as a function of algorithm iterations. A substantial reduction of the distance followed by a plateau suggests convergence of the algorithm. Such distance plots are generated by `plot(type = 'training')`. As presented in the graphic below, SOM with all of Euclidean, Manhattan and cosine distances converged within 2000 iterations of the algorithm. If this is not the case, you may consider increasing the `rlen` parameter values in the `combi_cluster()` function.
 
 ```r
 
@@ -999,8 +999,8 @@ The first step of quality control is to check if SOM converged. This can be easi
   ## there are warnings generated that the training plots can not be generated
   ## for SOM nodes, but you can ignore them
   ##
-  ## The plot() function retugns a list of ggplot pbjects
-  ## which are easy to customized by the user
+  ## The plot() function returns a list of ggplot pbjects
+  ## which are easy to customize by the user
 
   som_convergence_plots <- algos %>%
     map(plot, type = 'training') %>%
@@ -1050,7 +1050,7 @@ node_cluster_number_plots$som_pam_euclidean +
 
 In the graphic panel above, the red dashed lines indicate the guessed number of clusters and the blue ones represent the optimal cluster number based on the peak of the silhouette statistic. With the cosine distance, our cluster number guess seems to be resonable. In turn, k = 2 clusters will likely work better for the clustering solutions with Euclidean and Manhattan distances. 
 
-In order to select the algorithm with the largest explanatory value and the best separation between the clusters, we'll compare the explained clustering variance and mean silhouette statistic in 5-fold cross-validation. Generally, cross-validation for `combi_analysis` objects is in a similar way as for 'simple' clustering analyses, by calling the `cv()` function. Yet, because SOM is principally a neuronal network, we can use this trained structure to predict the node assignment for new data. Hence, we'll set the `type` argument to `som`:
+In order to select the algorithm with the largest explanatory value and the best separation between the clusters, we'll compare the explained clustering variance and mean silhouette statistic in 5-fold cross-validation. Generally, cross-validation for `combi_analysis` objects is performed in a similar way as for 'simple' clustering analyses, by calling the `cv()` function. Yet, because SOM is principally a neuronal network, we can use this trained structure to predict the node assignment for new data. Hence, we'll set the `type` argument to `'som'`:
 
 ```r
   ## SOM prediction method is recommended
@@ -1083,7 +1083,7 @@ $som_pam_cosine
 ```
 Similar to other clustering algorithms using an intial random placement of cluster centers or nodes, there's little concordance of the cluster assignment between the genuine clustering structure and the cluster assignment in the cross-validation folds. This results in a poor accuracy and large classification error. Still, the explained clustering variance and mean silhouette width may be used to compare the algorithms. In such comparison, the SOM/PAM/cosine procedure is characterized by the largest fraction of explained variance and the best cluster separation measured by silhouette width. 
 
-The SOM/PAM/cosine clustering solution will be subsequently used to for semi-supervised clustering aiming at prediction of the cluster assignment of the test portion of the `wines` data set. As above, the prediction will be done with the trained SOM network with `predict(type = 'som')`:
+The SOM/PAM/cosine clustering solution will be subsequently used to for semi-supervised clustering of the test portion of the `wines` data set. As above, the prediction will be done with the trained SOM network with `predict(type = 'som')`:
 
 ```r
 
@@ -1103,7 +1103,7 @@ The SOM/PAM/cosine clustering solution will be subsequently used to for semi-sup
 
 ```
 The `predict()` function applied to `combi_analysis` objects returns `clust_analysis` objects, for which clustering variance, silhouette and plots can be retrieved as presented before for 'simple' hierarchical, kmeans and PAM clustering. 
-For instance, the cluster structures for the training and test subsets display quit comparable clustering variances and mean silhouette values, as well as the numbers of potentially misclassified observations with negative silhouette values:
+For instance, the cluster structures for the training and test subsets display quite comparable clustering variances and mean silhouette values, as well as the numbers of potentially misclassified observations with negative silhouette values:
 
 ```r
   ## comparison of variances and silhouette widths
@@ -1191,7 +1191,7 @@ We can easily visualize pairwise distances between the observations and SOM node
 
   ## for the training data subset:
   ## a list of UMAP layout plots is returned, we need only
-  ## only the UMAP layout for the observations with color coding
+  ## the UMAP layout for the observations with color coding
   ## of the cluster assignment
 
   cosine_umap_plots$train <- cosine_umap_plots$train$final
@@ -1342,7 +1342,7 @@ Mean_Balanced_Accuracy
 ### Handling multi-layer data with self-organizing maps
 
 <details>
-As discussed in mode details in by the authors of the `kohonen` package (see Wehrens et al. in the reference list), SOM are well suited to handle multi-layer data sets. Such layers may consist of variables in various formats (e.g. binary and ordinal layer) or features concerning diverse properties of the investigated objects (e.g. position and RGB color of pixels in a picture). In the following example we will apply this SOM-based multi-layer approach to clusetr the `Cars93` data set provided by the R package `MASS`. In brief, the data layers will be defined by teh variable character and consist of (1) numeric features such as horsepower or weight, (2) ordinal/count variables like number of passengers or airbags, and (3) binary such as manual transmission or US origin. Since the data set is pretty small, we won't validate the results in a 'clean' hold-out setting and stay with cros-validation.
+As discussed in mode details by the authors of the `kohonen` package (see Wehrens et al. in the reference list), SOM are well suited to handle multi-layer data sets. Such layers may consist of variables in various formats (e.g. binary and ordinal layer) or features concerning diverse properties of the investigated objects (e.g. position and RGB color of pixels in a picture). In the following example we will apply this SOM-based multi-layer approach to cluster the `Cars93` data set provided by the R package `MASS`. In brief, the data layers will consist of (1) numeric features such as horsepower or weight, (2) ordinal/count variables like number of passengers or airbags, and (3) binary such as manual transmission or US origin. Since the data set is pretty small, we won't validate the results in a 'clean' hold-out setting and stay with cross-validation.
 
 ```r
 
@@ -1420,19 +1420,19 @@ As discussed in mode details in by the authors of the `kohonen` package (see Weh
 ```
 The data set has a moderate clustering tendency as investigated by `get_clust_tendency()`. 
 
-Fitting of SOM with subsequent clustering of the U matrix, i.e. matrix of distances between the SOM nodes is done with a dedicated functon of the `clustTools` package: `multi_cluster()`. Its syntax is quite similar to `combi_cluster()`. Note, that the function allows for definition of separate distance measures for each data layer via the `distance_method` argument. In our case, the numeric layer will be clustered with cosine, the ordinal layer with Manhattan and the binary layer with Tanimoto distance. Additional arguments that control the SOM behavior are passed by a named list via the `som_args` argument: here, we are defining a custom learning rate `alpha`, weights for the layers via `user.weights` and telling the SOM algorithm to apply the user#s layer weights directly to the data layers by specifying `normalizeDataLayers = FALSE`. Clusetering of the U matrix is done with PAM implemented by the `kcluster()` function.
+Fitting of SOM with subsequent clustering of the U matrix, i.e. matrix of distances between the SOM nodes is done with a dedicated functon of the `clustTools` package: `multi_cluster()`. Its syntax is quite similar to `combi_cluster()`. Note, that the function allows for definition of separate distance measures for each data layer via the `distance_method` argument. In our case, the numeric layer will be clustered with cosine, the ordinal layer with Manhattan and the binary layer with Tanimoto distance. Additional arguments that control the SOM behavior are passed by a named list via the `som_args` argument: here, we are defining a custom learning rate `alpha`, weights for the layers via `user.weights` and telling the SOM algorithm to apply the user's layer weights directly to the data layers by specifying `normalizeDataLayers = FALSE`. Clustering of the U matrix is done with PAM implemented by the `kcluster()` function.
 
 ```r
 
   ## the layers will be handled by three various distances:
-  ## Euclidean for numeric variables, Manhattan for ordinal variables
+  ## cosine for numeric variables, Manhattan for ordinal variables
   ## and Tanimoto for binary features
 
   car_som <-
     multi_cluster(data = car_lst,
                   distance_method = c('cosine', 'manhattan', 'tanimoto'),
-                  xdim = 6,
-                  ydim = 7,
+                  xdim = 5,
+                  ydim = 6,
                   topo = 'hexagonal',
                   neighbourhood.fct = 'gaussian',
                   toroidal = FALSE,
@@ -1446,7 +1446,7 @@ Fitting of SOM with subsequent clustering of the U matrix, i.e. matrix of distan
                   clust_fun = 'pam')
 
 ```
-As demonstrated before, we're checking convergence of the SOM algorithm by calling `plot(type = 'training')`. We're customizing the training plot to present the training curve for each layer in a separate plot facet:
+As demonstrated before, we're checking convergence of the SOM algorithm by calling `plot(type = 'training')`. We're customizing the training plot to present the training curve for each layer in a separate facet:
 
 ```r
   car_convergence <- plot(car_som, type = 'training')
@@ -1459,10 +1459,182 @@ As demonstrated before, we're checking convergence of the SOM algorithm by calli
 
   car_convergence
 ```
-![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/08707459-5b8a-4272-9c16-b1f30bc143c3)
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/0ac5ef8c-2ddb-4fe0-b623-e27e251e4c06)
 
 
+Based on plots of within-cluster sum of squares and silhouette widths for varying number of clusters of SOM nodes (generated by `plot(type = 'diagnostic')`), 2 - 3 clusters are proposed for the optimal solution. Hence our initial guess (k = 3) turned to be quite correct. 
 
+```r
+
+ ## WSS and silhouette plots
+
+  car_clust_number <- plot(car_som, type = 'diagnostic')$node %>%
+    map(~.x + theme(plot.tag = element_blank()))
+
+  car_clust_number$wss +
+    car_clust_number$silhouette
+
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/862639b5-9e7d-44c3-90c6-2e24bbb87b18)
+
+Cross-validated explained clustering variance and silhouette width will be obtained by calling `cv(type = 'som')` for the multi-layer cluster analysis object:
+
+```r
+  car_cross_validation <-
+    cv(car_som,
+       nfolds = 10,
+       type = 'som') %>%
+    summary
+
+  car_cross_validation %>%
+    select(ends_with('mean'))
+```
+```r
+# A tibble: 1 × 4
+  accuracy_mean error_mean frac_var_mean sil_width_mean
+          <dbl>      <dbl>         <dbl>          <dbl>
+1         0.123      0.877         0.701          0.398
+```
+Again, although the overal accuracy is quite poor because of partly stochastic process of SOM fitting, the clustering structure could explain more than 70% of the `Cars93` data set variance. The cross-validated mean silhouette width suggests a moderate degree of cluster separation. Let's take a more detailed look at separation of particular clusters by plotting silhouette widths for observations and a heat map of the U matrix. Those plots indicate possibly problematic separation of the clusters 1 and 3:
+
+```r
+
+  ## silhouette values for particular clusters
+
+  car_sil_plot <- car_som %>%
+    silhouette %>%
+    plot
+
+  ## heat map of pairwise distances
+
+  car_heat_map <- 
+    plot(car_som, type = 'heat_map')$node + 
+    labs(title = 'Distance between SOM nodes') + 
+    theme(plot.tag = element_blank())
+
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/382091b5-9f67-44e5-8fee-816f5cc4918a)
+
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/1d59c272-7c27-48da-bd8e-7a48f981b5cb)
+
+To get some insight into levels of the cluster-defining variables, `plot_clust_hm()` is used. This function called for multi-layer analysis objects returns, unlike for single-layer analyses, a list of heat maps representing the data layers:
+
+```r
+  ## plot_clust_hm() returns a list
+  ## of heat maps for multi-layer data
+  ##
+  ## you may adjust them separately
+
+  car_feature_hm <- car_som %>%
+    plot_clust_hm
+
+  car_feature_hm <- car_feature_hm %>%
+    map(~.x +
+          theme(legend.position = 'bottom',
+                axis.text.x = element_blank(), 
+                plot.tag = element_blank()))
+
+  car_feature_hm$numeric <-
+    car_feature_hm$numeric +
+    scale_fill_gradient2(low = 'steelblue',
+                         mid = 'black',
+                         high = 'firebrick',
+                         midpoint = 0,
+                         limits = c(-3, 3),
+                         oob = scales::squish) +
+    labs(title = 'Cars93: numeric features')
+
+  car_feature_hm$ordinal <-
+    car_feature_hm$ordinal +
+    scale_fill_gradient2(low = 'steelblue',
+                         mid = 'black',
+                         high = 'firebrick',
+                         midpoint = 0,
+                         limits = c(-2.5, 2.5),
+                         oob = scales::squish) +
+    guides(fill = 'legend') +
+    labs(title = 'Cars93: ordinal features')
+
+  car_feature_hm$binary <-
+    car_feature_hm$binary +
+    scale_fill_gradient(low = 'steelblue',
+                        high = 'firebrick') +
+    guides(fill = 'legend') +
+    labs(title = 'Cars93: binary features')
+```
+```r
+  car_feature_hm$numeric + 
+    car_feature_hm$ordinal + 
+    car_feature_hm$binary + 
+    plot_layout(ncol = 2)
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/1a776fa6-6238-4870-9494-cbac7fe739bd)
+
+This graphic reveals that the largest cluster 2 groups low-motorized, small and economical cars with low airbag numbers, and designed for few passengers. By contrast, cluster 1 vehicles are expensive, mostly US origin, large and frequently equipped with automatic transmission and offer substantially more passenger seats. Cluster 3 cars are powerfully motorized, expensive, middle sized and designed for very few passengers. With those cluster characteristic in mind, we'll investigate the 'true' car type frequency within the clusters.
+
+```r
+  car_assignment <- car_som %>%
+    extract('assignment') %>%
+    mutate(Make = observation) %>%
+    left_join(my_cars[c('Make', 'Type')],
+              by = 'Make')
+
+  car_counts <-
+    count(car_assignment, clust_id, Type) %>%
+    group_by(clust_id) %>%
+    mutate(percent = n/sum(n) * 100) %>%
+    ungroup
+```
+
+```r
+> car_counts
+# A tibble: 10 × 4
+   clust_id Type        n percent
+   <fct>    <fct>   <int>   <dbl>
+ 1 1        Compact     2    6.06
+ 2 1        Large      11   33.3 
+ 3 1        Midsize    11   33.3 
+ 4 1        Van         9   27.3 
+ 5 2        Compact    14   28.6 
+ 6 2        Midsize     6   12.2 
+ 7 2        Small      21   42.9 
+ 8 2        Sporty      8   16.3 
+ 9 3        Midsize     5   45.5 
+10 3        Sporty      6   54.5 
+
+```
+```r
+  car_count_plot <- car_counts %>%
+    ggplot(aes(x = clust_id,
+               y = percent,
+               fill = Type)) +
+    geom_bar(position = 'stack',
+             stat = 'identity',
+             color = 'black') +
+    scale_fill_viridis_d() + 
+    labs(title = 'Car type distribution in the clusters', 
+         x = 'Cluster of Cars93')
+
+  car_count_plot
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/612639c7-fa5a-421d-822b-3fa15f6928e2)
+
+In accordance with the clustering features, the cluster 2 consists predominantly of small and compact cars, while vans, midsize and large vehicles populate the cluster 2. The remaining cluster 3 consists of middle size and sporty models. 
+
+Finally, let's investigate impact of particular clustering variables on the algorithm's explanatory performance by computing permutation variable importance with `impact()`:
+
+```r
+  car_importance <- impact(car_som,
+                           n_iter = 50,
+                           .parallel = TRUE)
+
+  plot(car_importance) + 
+    geom_vline(xintercept = 0, 
+               linetype = 'dashed')
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/55a7150f-7d4c-4b3d-ab74-954e14d86767)
+
+Those results suggest cylinder number as by far the most influential clustering feature. Quite unexpectedly, the binary variables manual transmission and origin were identified as the least important variables. This can be however explained by setting the `user.weights` parameter during construction of the multi-layer analysis object. With this manual intervention, the binary data layer was weighted lower than numeric and ordinal features.
   
 </details>
 
