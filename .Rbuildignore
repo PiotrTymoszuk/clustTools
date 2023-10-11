@@ -1,0 +1,5 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+devel_test.R
+inst\examples
+inst\\logo
