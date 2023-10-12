@@ -17,7 +17,10 @@
 #' `calculate_dist()` and `calculate_weighted_dist()` provide handy wrappers for
 #' \code{\link[philentropy]{distance}}.
 #' The smc (simple matching coefficient) distance is calculated with the
-#' \code{\link[nomclust]{sm}} function.
+#' \code{\link[nomclust]{sm}} function. Similarity coefficients returned by
+#' \code{\link[philentropy]{distance}} (methods: cosine, ruzicka, intersection,
+#' inner_product, harmonic_mean, hassebrook, fidelity) are handled with the
+#' formula `dist = 1 - simil`.
 #'
 #' @references
 #' Drost H-G. Philentropy: Information Theory and Distance Quantification
@@ -83,7 +86,11 @@
                                         use.row.names = TRUE,
                                         mute.message = TRUE)
 
-      if(method %in% c('cosine', 'ruzicka')) {
+      simil <- c('cosine', 'ruzicka', 'intersection',
+                 'inner_product', 'harmonic_mean', 'hassebrook',
+                 'fidelity')
+
+      if(method %in% simil) {
 
         ### handling the similarity coefficients
 
