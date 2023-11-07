@@ -21,6 +21,7 @@
 #' @importFrom purrr map2
 #' @importFrom purrr map2_chr
 #' @importFrom purrr map2_dfr
+#' @importFrom purrr map2_dbl
 #' @importFrom purrr map_dbl
 #' @importFrom purrr reduce
 #' @importFrom purrr compact

@@ -2,7 +2,7 @@
 
 # Cross-distance between data frames -----
 
-#' Compute cross-distances between two data frames
+#' Compute cross-distances between data frames or clusters
 #'
 #' @description
 #' Computes cross-distances between two data frames with the same variable sets.
@@ -63,7 +63,6 @@
   }
 
 #' @rdname cross_distance
-#' @export cross_distance.data.frame
 #' @export
 
   cross_distance.data.frame <- function(x,
@@ -146,7 +145,6 @@
   }
 
 #' @rdname cross_distance
-#' @export cross_distance.clust_analysis
 #' @export
 
   cross_distance.clust_analysis <- function(x,
@@ -207,7 +205,6 @@
   }
 
 #' @rdname cross_distance
-#' @export cross_distance.min_analysis
 #' @export
 
   cross_distance.min_analysis <- function(x, ...) {
@@ -257,7 +254,6 @@
   }
 
 #' @rdname cross_distance
-#' @export cross_distance.combi_analysis
 #' @export
 
   cross_distance.combi_analysis <- function(x,

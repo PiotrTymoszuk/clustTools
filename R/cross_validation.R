@@ -409,7 +409,6 @@
   cv <- function(x, ...) UseMethod('cv')
 
 #' @rdname cv
-#' @export cv.clust_analysis
 #' @export
 
   cv.clust_analysis <- function(x,
@@ -546,7 +545,6 @@
   }
 
 #' @rdname cv
-#' @export cv.combi_analysis
 #' @export
 
   cv.combi_analysis <- function(x,

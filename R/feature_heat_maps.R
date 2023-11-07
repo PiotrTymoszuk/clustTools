@@ -34,7 +34,6 @@
   plot_clust_hm <- function(x_object, ...) UseMethod('plot_clust_hm')
 
 #' @rdname plot_clust_hm
-#' @export plot_clust_hm.clust_analysis
 #' @export
 
   plot_clust_hm.clust_analysis <- function(x_object,
@@ -168,7 +167,6 @@
   }
 
 #' @rdname plot_clust_hm
-#' @export plot_clust_hm.combi_analysis
 #' @export
 
   plot_clust_hm.combi_analysis <- function(x_object,

@@ -1,7 +1,7 @@
 Package: clustTools
 Type: Package
 Title: Tools for Dimensionality Reduction and Data Clustering
-Version: 1.2.0
+Version: 1.2.1
 Maintainer: Piotr Tymoszuk <piotr.s.tymoszuk@gmail.com>
 Description: Provides a comprehensive set of R functions for dimensionality 
     reduction (PCA, MDS and UMAP), clustering (HCl, k-means, PAM, DBSCAN, SOM)

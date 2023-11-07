@@ -1,4 +1,4 @@
-# Provides functions for dimensionality reduction anlysis.
+# Provides functions for dimensionality reduction analysis.
 
 # Utils ------
 
@@ -57,6 +57,8 @@
 
       dist_mtx <- data
 
+      distance_method <- 'custom'
+
     }
 
     component_tbl <- stats::cmdscale(d = dist_mtx,
@@ -65,7 +67,7 @@
     component_tbl <- as.data.frame(component_tbl)
 
     component_tbl <- mutate(component_tbl,
-                            observation = rownames(as.matrix(data)))
+                            observation = rownames(as.data.frame(as.matrix(data))))
 
     component_tbl <- as_tibble(component_tbl)
 
@@ -78,6 +80,7 @@
     red_analysis(list(data = quo(!!model_frame),
                       red_obj = NULL,
                       red_fun = 'mds',
+                      dist_method = distance_method,
                       component_tbl = component_tbl,
                       loadings = NULL))
 
@@ -136,6 +139,7 @@
     red_analysis(list(data = quo(!!model_frame),
                       red_obj = red_obj,
                       red_fun = 'pca',
+                      dist_method = 'custom',
                       component_tbl = component_tbl,
                       loadings = loadings))
 
@@ -151,24 +155,45 @@
 
     model_frame <- enexpr(data)
 
-    if(!inherits(data, 'dist')) {
+    if(inherits(data, 'dist')) {
 
-      red_obj <- umap::umap(d = as.matrix(data),
-                            n_components = kdim,
-                            metric = distance_method, ...)
+      distance_method <- 'custom'
+
+      ## metric name provided only for the umap()
+      ## function to work - it won't be used anyway, because
+      ## the data argument is a distance object
+
+      metric <- 'euclidean'
+
+      input <- 'dist'
+
+    } else if(!distance_method %in% c('euclidean', 'manhattan', 'cosine')){
+
+      data <- stats::as.dist(calculate_dist(data, distance_method))
+
+      ## as above
+
+      metric <- 'euclidean'
+
+      input <- 'dist'
 
     } else {
 
-      red_obj <- umap::umap(d = as.matrix(data),
-                            n_components = kdim,
-                            input = 'dist', ...)
+      input <- 'data'
+
+      metric <- distance_method
 
     }
+
+    red_obj <- umap::umap(d = as.matrix(data),
+                          n_components = kdim,
+                          metric = metric,
+                          input = input, ...)
 
     component_tbl <- as.data.frame(red_obj$layout)
 
     component_tbl <- mutate(component_tbl,
-                            observation = rownames(as.matrix(data)))
+                            observation = rownames(as.data.frame(as.matrix(data))))
 
     component_tbl <- as_tibble(component_tbl)
 
@@ -181,6 +206,7 @@
     red_analysis(list(data = quo(!!model_frame),
                       red_obj = red_obj,
                       red_fun = 'umap',
+                      dist_method = distance_method,
                       component_tbl = component_tbl,
                       loadings = NULL))
 
@@ -197,6 +223,9 @@
     model_frame <- enexpr(data)
 
     if(inherits(data, 'dist')) {
+
+      warning('Factor analysis with distances in not recommended.',
+              call. = FALSE)
 
       model_data <- as.matrix(data)
 
@@ -247,6 +276,7 @@
     red_analysis(list(data = quo(!!model_frame),
                       red_obj = red_obj,
                       red_fun = 'fa',
+                      dist_method = 'custom',
                       component_tbl = component_tbl,
                       loadings = loadings))
 
@@ -281,14 +311,14 @@
 #' BARTLETT MS. THE STATISTICAL CONCEPTION OF MENTAL FACTORS. Br J Psychol
 #' Gen Sect (1937) 28:97–104. doi:10.1111/j.2044-8295.1937.tb00863.x
 #'
-#' @return a \code{\link{red_analysis}} object.
+#' @return a \code{\link{red_analysis}} object with, among others,
+#' \code{\link{plot.red_analysis}}, \code{\link{summary.red_analysis}} and
+#' \code{\link{predict.red_analysis}} methods.
 #'
 #' @param data a numeric data frame, a matrix or a distance object
 #' (class `dist`).
 #' @param distance_method name of the distance metric, see:
-#' \code{\link{get_kernel_info}}. Valid only for MDS and UMAP.
-#' For UMAP, the distance is specified by a
-#' \code{\link[umap]{umap.defaults}} object.
+#' \code{\link{get_kernel_info}}. Explicitly used only by MDS and UMAP.
 #' @param kdim dimension number.
 #' @param red_fun name of the dimensionality reduction function.
 #' @param ... extra arguments passed to \code{\link[pcaPP]{PCAproj}} (PCA),
@@ -334,6 +364,105 @@
                        kdim, ...),
            fa = fa(data,
                    kdim, ...))
+
+  }
+
+# SOM as dimensionality reduction method ------
+
+#' Dimensionality reduction with self-organizing maps.
+#'
+#' @description
+#' The `som_reduce()` function applies self-organizing maps (SOM) as a classical
+#' dimensionality reduction method, i.e. to reduce the number of variables.
+#'
+#' @details
+#' In contrast to \code{\link{som_cluster}}, which reduces the observation
+#' number (observation -> nodes), `som_reduce()` diminishes the variable number
+#' by representing associated variables as SOM nodes or 'meta-variables'.
+#' The data frame of such meta-variables (to be strict, codebook vectors of
+#' node positions) is stored as the score/component table of the `red_analysis`
+#' object returned by the function.
+#'
+#' @return a \code{\link{red_analysis}} object with, among others,
+#' \code{\link{plot.red_analysis}}, \code{\link{summary.red_analysis}} and
+#' \code{\link{predict.red_analysis}} methods.
+#'
+#' @param data a numeric data frame or matrix.
+#' @param distance_method name of the distance metric, see:
+#' \code{\link{get_kernel_info}}.
+#' @inheritParams som_cluster
+#'
+#' @export
+
+  som_reduce <- function(data,
+                         distance_method = 'euclidean',
+                         xdim = 5,
+                         ydim = 4,
+                         topo = c('hexagonal', 'rectangular'),
+                         neighbourhood.fct = c('gaussian', 'bubble'),
+                         toroidal = FALSE,
+                         seed = 1234, ...) {
+
+    ## input control for the data and distance -------
+
+    check_numeric(data)
+
+    distance_method <- distance_method[1]
+
+    if(!distance_method %in% get_kernel_info()) {
+
+      stop('Invalid distance method.', call. = FALSE)
+
+    }
+
+    model_frame <- enexpr(data)
+
+    ## entry control for the grid parameters -----
+
+    stopifnot(is.numeric(xdim))
+    stopifnot(is.numeric(ydim))
+
+    xdim <- as.integer(xdim)
+    ydim <- as.integer(ydim)
+
+    topo <- match.arg(topo[1],
+                      c('hexagonal', 'rectangular'))
+
+    neighbourhood.fct <- match.arg(neighbourhood.fct[1],
+                                   c('gaussian', 'bubble'))
+
+    stopifnot(is.logical(toroidal))
+
+    ## grid and RNG ----------
+
+    som_grid <- kohonen::somgrid(xdim = xdim,
+                                 ydim = ydim,
+                                 topo = topo,
+                                 neighbourhood.fct = neighbourhood.fct,
+                                 toroidal = toroidal)
+
+    set.seed(seed = seed)
+
+    ## fitting the SOM ----------
+
+    kohonen_obj <- kohonen::som(t(as.matrix(data)),
+                                grid = som_grid,
+                                dist.fcts = distance_method, ...)
+
+    score_tbl <- as.data.frame(t(kohonen_obj$codes[[1]]))
+
+    score_tbl <- set_names(score_tbl, paste0('comp_', 1:ncol(score_tbl)))
+
+    score_tbl <- rownames_to_column(score_tbl, 'observation')
+
+    ## the output red_analysis class object ------
+
+    red_analysis(list(data = quo(!!model_frame),
+                      red_obj = kohonen_obj,
+                      red_fun = 'som',
+                      dist_method = distance_method,
+                      component_tbl = as_tibble(score_tbl),
+                      loadings = NULL))
 
   }
 

@@ -117,6 +117,8 @@
 #' @param cust_theme custom ggplot theme.
 #' @param ... extra arguments passed to \code{\link[ggplot2]{geom_bar}}.
 #'
+#' @return a `ggplot` class graphic.
+#'
 #' @export plot.sil_extra
 #' @export
 

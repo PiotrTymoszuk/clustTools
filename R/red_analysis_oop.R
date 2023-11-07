@@ -40,24 +40,37 @@
 
 #' Plot features of a red_analysis object.
 #'
-#' @description Plots the component table, loadings table - in both cases the
+#' @description
+#' Plots the component table, loadings table - in both cases the
 #' first two components/dimensions in form of scatter plots -  or generates
 #' a scree plot of the variance percentages associated with
 #' the components/dimensions.
-#' @details The loadings table plot is available only for the PCA `red_analysis`
-#' objects.
+#'
+#' @details
+#' The loadings table plot is available only for the PCA `red_analysis` objects.
+#'
 #' @param x a `red_analysis` object, created with \code{\link{reduce_data}}.
 #' @param type plot type:
-#' 'component_tbl' or 'score' present the scores for particular observations in
-#' a scatter plot.
-#' 'loadings' plot the variable PCA loadings as a scatter plot.
-#' 'scree' plots the percentage of component's variances as a line plot.
+#'
+#' * 'component_tbl' or 'score' present the scores for particular observations
+#' in a scatter plot
+#'
+#' * 'loadings' plot the variable PCA loadings as a scatter plot.
+#'
+#' * 'scree' plots the percentage of component's variances as a line plot.
+#'
+#' * 'neighborhood' plots fractions of nearest neighbors of the data points
+#' preserved in the neighborhood in the reduced layout. See: \code{\link{np}}.
+#'
 #' @param label_points logical, should the variable names be displayed in the
 #' plot? Valid only for the PCA loadings plot.
 #' @param cust_theme a ggplot plot theme.
 #' @param segment_color color of the lines presented in the PCA loading plot.
-#' @param ... extra arguments passed to \code{\link{plot_point}}.
-#' @return a ggplot object.
+#' @param ... extra arguments passed to \code{\link{plot_point}}
+#' ('component_tbl', 'score', 'loadings') or \code{\link{np}} ('neighborhood').
+#'
+#' @return a `ggplot` object.
+#'
 #' @export plot.red_analysis
 #' @export
 
@@ -65,7 +78,8 @@
                                 type = c('component_tbl',
                                          'scores',
                                          'loadings',
-                                         'scree'),
+                                         'scree',
+                                         'neighborhood'),
                                 label_points = TRUE,
                                 cust_theme = ggplot2::theme_classic(),
                                 segment_color = 'steelblue', ...) {
@@ -77,7 +91,9 @@
     stopifnot(is.logical(label_points))
 
     type <- match.arg(type[1],
-                      c('component_tbl', 'scores', 'loadings', 'scree'))
+                      c('component_tbl', 'scores',
+                        'loadings', 'scree',
+                        'neighborhood'))
 
     if(x$red_fun %in% c('mds', 'umap')) {
 
@@ -95,6 +111,16 @@
     component <- NULL
     perc_var <- NULL
     line_group <- NULL
+
+    ## neighborhood preservation plots --------
+
+    if(type == 'neighborhood') {
+
+      np_res <- np(x, ...)
+
+      return(plot(np_res))
+
+    }
 
     ## plot meta -------
 
@@ -205,5 +231,70 @@
     }
 
   }
+
+# prediction ------
+
+#' Project new data onto a reduction analysis layout.
+#'
+#' @description
+#' Predicts reduction analysis scores for a new piece of data with a reduction
+#' algorithm-specific methodology.
+#'
+#' @details
+#' Currently implemented only for PCA and UMAP reduction analysis objects.
+#' The method employs internally the function `predict()` from the
+#' packages `stats` and `umap`. For reduction analysis objects
+#' created with other methods, `NULL` is returned with a warning.
+#' Of note, specifically for UMAP reduction analysis objects, the method will
+#' work only for few basic distances implemented by the `umap` package by
+#' default (Euclidean, Manhattan and cosine).
+#'
+#' @return an object of the \code{\link{red_analysis}} class.
+#'
+#' @param object a `red_analysis` object, see Details.
+#' @param newdata a numeric data frame or a numeric matrix with the new
+#' data set.
+#' @param ... extra arguments, currently none.
+#'
+#' @export predict.red_analysis
+#' @export
+
+   predict.red_analysis <- function(object, newdata, ...) {
+
+     stopifnot(is_red_analysis(object))
+
+     check_numeric(newdata)
+
+     if(!object$red_fun %in% c('umap', 'pca')) {
+
+       warning(paste("'predict()' is implemented only for redction analysis",
+                     "objects created with the PCA and UMAP algorithms."),
+               call. = FALSE)
+
+       return(NULL)
+
+     }
+
+     data <- enexpr(newdata)
+
+     ## predictions -------
+
+     preds <- predict(object$red_obj, newdata)
+
+     preds <- set_names(as.data.frame(preds),
+                        paste0('comp_', 1:ncol(preds)))
+
+     preds <- rownames_to_column(preds, 'observation')
+
+     preds <- list(data = quo(!!data),
+                   red_obj = NULL,
+                   red_fun = 'predicton',
+                   dist_method = object$dist_method,
+                   component_tbl = preds,
+                   loadings = NULL)
+
+     red_analysis(preds)
+
+   }
 
 # END ------

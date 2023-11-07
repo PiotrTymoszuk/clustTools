@@ -18,7 +18,6 @@
 #'
 #' @return a list with the numbers of observations and variables.
 #'
-#' @export nobs.clust_analysis
 #' @export
 
   nobs.clust_analysis <- function(object, ...) {
@@ -55,7 +54,6 @@
   }
 
 #' @rdname nobs.clust_analysis
-#' @export nobs.red_analysis
 #' @export
 
   nobs.red_analysis <- function(object, ...) {
@@ -77,7 +75,6 @@
   }
 
 #' @rdname nobs.clust_analysis
-#' @export nobs.combi_analysis
 #' @export
 
   nobs.combi_analysis <- function(object, ...) {
@@ -112,7 +109,6 @@
   }
 
 #' @rdname ngroups
-#' @export ngroups.clust_analysis
 #' @export
 
   ngroups.clust_analysis <- function(x, ...) {
@@ -126,7 +122,6 @@
   }
 
 #' @rdname ngroups
-#' @export ngroups.combi_analysis
 #' @export
 
   ngroups.combi_analysis <- function(x, ...) {

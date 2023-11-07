@@ -20,7 +20,6 @@
   }
 
 #' @rdname var
-#' @export var.default
 #' @export
 
   var.default <- function(x, ...) {
@@ -50,7 +49,6 @@
   }
 
 #' @rdname dist
-#' @export dist.default
 #' @export
 
   dist.default <- function(x, ...) {

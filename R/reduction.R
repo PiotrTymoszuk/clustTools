@@ -82,7 +82,7 @@
 
     if(!check_supersom | with %in% c('distance', 'umatrix')) {
 
-      red_obj <- reduce_data(extract.clust_analysis(object, type = with),
+      red_obj <- reduce_data(extract(object, type = with),
                              distance_method = object$dist_method,
                              kdim = kdim,
                              red_fun = red_fun, ...)

@@ -33,8 +33,6 @@
 #' @param plot_subtitle plot subtitle.
 #' @param plot_tag plot tag.
 #' @param cust_theme custom plot theme, a ggplot2 theme object.
-#'
-#' @export
 
   plot_knn_distance <- function(diss_obj,
                                 k,
@@ -118,8 +116,6 @@
 #' @param y_lab y axis title.
 #' @param cust_theme custom plot theme, a ggplot2 theme object.
 #' @param ... extra arguments, currently none.
-#'
-#' @export
 
   plot_dendro <- function(clust_str,
                           k,
@@ -272,8 +268,6 @@
 #'
 #' @param kohonen_object a 'kohonen' class object.
 #' See: \code{\link[kohonen]{som}} for details.
-#'
-#' @export
 
   plot_som <- function(kohonen_object) {
 
@@ -330,8 +324,6 @@
 #' @param plot_subtitle plot subtitle.
 #' @param cust_theme custom plot theme, a ggplot2 theme object.
 #' @param ... extra arguments, currently none specified.
-#'
-#' @export
 
   plot_train_som <- function(kohonen_object,
                              plot_title = NULL,
@@ -386,7 +378,7 @@
                     title = plot_title,
                     subtitle = plot_subtitle,
                     tag = paste0('\nIterations: n = ',
-                                 nrow(n_iterations)))
+                                 n_iterations))
 
   }
 
@@ -425,8 +417,6 @@
 #' @param txt_type type of the displayed text: either as geom_text or geom_label
 #' @param jitter_width horizontal jittering of the points.
 #' @param jitter_height vertical jittering of the points.
-#'
-#' @export
 
   plot_point <- function(data,
                          x_var,

@@ -154,7 +154,6 @@
   impact <- function(x, ...) UseMethod('impact')
 
 #' @rdname impact
-#' @export impact.clust_analysis
 #' @export
 
   impact.clust_analysis <- function(x,
@@ -337,7 +336,6 @@
   }
 
 #' @rdname impact
-#' @export impact.combi_analysis
 #' @export
 
   impact.combi_analysis <- function(x,

@@ -36,6 +36,9 @@
 #' done with SOM.
 #' The U matrix is computed with \code{\link[kohonen]{object.distances}}.
 #'
+#' * `layout` and `layout_distance` computes distances between observations in
+#' the dimensionality reduction layout.
+#'
 #' @param ... extra arguments, currently none.
 #'
 #' @return the requested feature/property.
@@ -94,7 +97,6 @@
   }
 
 #' @rdname extract
-#' @export model.frame.clust_analysis
 #' @export
 
   model.frame.clust_analysis <- function(formula, ...) {
@@ -106,7 +108,6 @@
   }
 
 #' @rdname extract
-#' @export dist.clust_analysis
 #' @export
 
   dist.clust_analysis <- function(x, type = c('distance', 'umatrix'), ...) {
@@ -170,7 +171,6 @@
   }
 
 #' @rdname extract
-#' @export model.frame.combi_analysis
 #' @export
 
   model.frame.combi_analysis <- function(formula, ...) {
@@ -182,7 +182,6 @@
   }
 
 #' @rdname extract
-#' @export dist.combi_analysis
 #' @export
 
   dist.combi_analysis <- function(x, type = c('distance', 'umatrix'), ...) {
@@ -205,7 +204,9 @@
                                             'loadings',
                                             'data',
                                             'sdev',
-                                            'object'), ...) {
+                                            'object',
+                                            'distance',
+                                            'layout_distance'), ...) {
 
     stopifnot(is_red_analysis(x))
 
@@ -215,7 +216,9 @@
                         'loadings',
                         'data',
                         'sdev',
-                        'object'))
+                        'object',
+                        'distance',
+                        'layout_distance'))
 
     if(type != 'sdev') {
 
@@ -224,7 +227,9 @@
                     scores = x$component_tbl,
                     loadings = x$loadings,
                     data = eval_tidy(x$data),
-                    object = x$red_obj))
+                    object = x$red_obj,
+                    distance = dist(x, type = 'distance'),
+                    layout_distance = dist(x, type = 'layout')))
 
     }
 
@@ -271,7 +276,6 @@
   }
 
 #' @rdname extract
-#' @export model.frame.red_analysis
 #' @export
 
   model.frame.red_analysis <- function(formula, ...) {
@@ -279,6 +283,64 @@
     stopifnot(is_red_analysis(formula))
 
     eval_tidy(formula$data)
+
+  }
+
+#' @rdname extract
+#' @export
+
+  dist.red_analysis <- function(x, type = c('distance', 'layout'), ...) {
+
+    ## entry check ------
+
+    stopifnot(is_red_analysis(x))
+
+    type <- match.arg(type[1], c('distance', 'layout'))
+
+    scores <- extract(x, 'scores')
+
+    if(type == 'layout' & is.null(scores)) {
+
+      warning('Score table is not available for the object.',
+              call. = FALSE)
+
+      return(NULL)
+
+    }
+
+    if(x$dist_method %in% c('custom', 'weighted_som')) {
+
+      warning(paste('No distance method available within the object,',
+                    'returning a matrix of Euclidean distances.'),
+              call. = FALSE)
+
+      distance_method <- 'euclidean'
+
+    } else {
+
+      distance_method <- x$dist_method
+
+    }
+
+    ## distances between data points ------
+
+    if(type == 'distance') {
+
+      data <- model.frame(x)
+
+      if(inherits(data, 'dist')) return(data)
+
+      return(as.dist(calculate_dist(data, distance_method)))
+
+    } else {
+
+      scores <- column_to_rownames(scores, 'observation')
+
+      scores <- select(scores, dplyr::starts_with('comp_'))
+
+      return(as.dist(calculate_dist(scores, distance_method)))
+
+    }
 
   }
 

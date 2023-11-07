@@ -15,9 +15,11 @@
 #'
 #' * `red_fun` name of the reduction function,
 #'
-#' `component_tbl` a data frame with component/score values for the observations,
+#' * `dist_method` name of the distance metric,
 #'
-#' `loadings` a data frame with variable loadings, relevant e.g. for PCA or
+#' * `component_tbl` a data frame with component/score values for the observations,
+#'
+#' * `loadings` a data frame with variable loadings, relevant e.g. for PCA or
 #' factor analysis,
 #'
 #' `data` a quosure calling the original data set.
@@ -48,6 +50,7 @@
 
     if(!all(c('red_obj',
               'red_fun',
+              'dist_method',
               'component_tbl',
               'loadings',
               'data') %in% names(x))) {
@@ -59,6 +62,8 @@
     }
 
     stopifnot(rlang::is_quosure(x$data))
+
+    stopifnot(x$dist.method %in% c(get_kernel_info(), 'weighted_som', 'custom'))
 
     ## output
 
@@ -203,8 +208,6 @@
 #' @param x a named list, see Details.
 #'
 #' @return a `combi_analysis` object with the elements specified in Details.
-#'
-#' @export
 
   combi_analysis <- function(x) {
 
@@ -271,8 +274,6 @@
 #'
 #' @return a tibble of the `importance` class with the variables listed
 #' in Details.
-#'
-#' @export
 
   importance <- function(x) {
 
@@ -331,8 +332,6 @@
 #' metric are stored as the `type` and `dist_method` attributes.
 #' Information on the cluster order is stored as the
 #' `x_levels` and `y_levels` attributes.
-#'
-#' @export
 
   cross_dist <- function(x,
                          type = c('homologous', 'heterologous'),
@@ -398,8 +397,6 @@
 #'
 #' @return an object of the `sil_extra` class. Technically, a tibble with
 #' the observation ID, cluster name, neighbor cluster name and silhouette width.
-#'
-#' @export
 
   sil_extra <- function(x, assignment) {
 
@@ -454,7 +451,7 @@
 
   }
 
-# Cross-validaiton -------
+# Cross-validation -------
 
 #' Cross validation results.
 #'
@@ -485,8 +482,6 @@
 #'
 #' @return an instance of the `cluster_cv` class with the elements specified
 #' in Details.
-#'
-#' @export
 
   cluster_cv <- function(x, ...) {
 
@@ -555,6 +550,81 @@
     ## the object
 
     structure(x, class = 'cluster_cv')
+
+  }
+
+# Neighborhood -------
+
+#' Create a `knb` class object.
+#'
+#' @description
+#' Creates an instance of the `knb` class at the top of a data frame.
+#'
+#' @details
+#' `knb` objects store results of testing neighborhood preservation by
+#' self-organizing maps and clustering analyses and inherit most of their
+#' methods from data frames.
+#' The input data frame has to contain the following columns:
+#'
+#' * `observation` with observation identifiers
+#'
+#' * `clust_id` with assignment of the observations to the clusters
+#'
+#' * `kNN_data` with the number of nearest data point neighbors
+#'
+#' * `kNN_cluster` with the number of nearest cluster neighbors
+#'
+#' @param x a data frame as specified in Details.
+#' @param ... extra arguments, currently none.
+#'
+#' @return an instance of the `knb` class as described in Details.
+
+  knb <- function(x, ...) {
+
+    err_txt <-
+      paste("'x' has to be a data frame with the `observation`,",
+            "'clust_id', 'kNN_data' and 'kNN_cluster'.")
+
+    if(!is.data.frame(x)) stop(err_txt, call. = FALSE)
+
+    if(any(!c('observation', 'clust_id', 'kNN_data', 'kNN_cluster') %in% names(x))) {
+
+      stop(err_txt, call. = FALSE)
+
+    }
+
+    if(!all(is.na(x$clust_id))) {
+
+      if(!is.factor(x$clust_id)) {
+
+        stop("The 'clust_id' variable has to be a factor or NA.", call. = FALSE)
+
+      }
+
+    }
+
+    if(!all(is.na(x$kNN_data))) {
+
+      if(!is.numeric(x$kNN_data)) {
+
+        stop("The 'kNN_data' variable has to be numeric.", call. = FALSE)
+
+      }
+
+    }
+
+    if(!all(is.na(x$kNN_cluster))) {
+
+      if(!is.numeric(x$kNN_cluster)) {
+
+        stop("The 'kNN_clust' variable has to be numeric or NA.", call. = FALSE)
+
+      }
+
+
+    }
+
+    structure(x, class = c('knb', class(x)))
 
   }
 
