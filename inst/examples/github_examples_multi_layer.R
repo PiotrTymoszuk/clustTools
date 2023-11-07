@@ -87,7 +87,7 @@
                   topo = 'hexagonal',
                   neighbourhood.fct = 'gaussian',
                   toroidal = FALSE,
-                  rlen = 3000,
+                  rlen = 7000,
                   som_args = list(mode = 'online',
                                   alpha = c(0.01, 0.2),
                                   user.weights = c(1, 1, 0.5),
@@ -107,6 +107,10 @@
                scales = 'free') +
     theme(plot.tag = element_blank(),
           legend.position = 'none')
+
+  qe(car_som)
+
+  pbc(car_som)
 
   ## WSS and silhouette plots
 
@@ -141,6 +145,17 @@
     plot(car_som, type = 'heat_map')$node +
     labs(title = 'Distance between SOM nodes') +
     theme(plot.tag = element_blank())
+
+  ## neighborhood preservation
+
+  car_som_neighborhood <- car_som %>%
+    np %>%
+    summary %>%
+    arrange(mean)
+
+  car_final_neighborhood <- car_som %>%
+    np(type = 'final') %>%
+    summary
 
 # Heat map visualization of the clustering features ------
 

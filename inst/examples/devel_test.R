@@ -4,9 +4,12 @@
   library(somKernels)
   library(MASS)
   library(tidyverse)
+  library(rlang)
+  library(kohonen)
 
   select <- dplyr::select
   extract <- clustTools::extract
+  map <- purrr::map
 
 # globals -----
 
@@ -21,8 +24,6 @@
 
   test_data <- min_max(test_data)
 
-  clustTools:::check_numeric(test_data)
-
   set.seed(1234)
 
   new_ids <- sample(1:nrow(test_data),
@@ -33,59 +34,23 @@
 
   test_data <- test_data[-new_ids, ]
 
-# testing the utils ------
+  data("wines")
 
-  test_distances <- purrr::map(clustTools::get_kernel_info(),
-                               calculate_dist,
-                               data = test_data)
 
-  test_distances <- rlang::set_names(test_distances,
-                                     clustTools::get_kernel_info())
+  set.seed(1234)
 
-  clustTools:::plot_knn_distance(diss_obj = as.dist(test_distances$dice),
-                                 k = 5,
-                                 eps = 0.006)
+  wines <- wines %>%
+    as.data.frame %>%
+    set_rownames(paste0('wine_', 1:nrow(wines))) %>%
+    center_data('median')
 
-  test_hcl <- hclust(d = as.dist(test_distances$dice))
+  wine_ids <- sample(1:nrow(wines),
+                     size = 100,
+                     replace = FALSE)
 
-  test_kohonen <- kohonen::som(as.matrix(test_data),
-                               grid = kohonen::somgrid(xdim = 5, ydim = 4),
-                               rlen = 1000,
-                               dist.fcts = 'jaccard')
+  train_wines <- wines[wine_ids, ]
 
-  #plot_dendro(test_hcl$clust_obj,
-   #           k = 3,
-    #          labels = FALSE,
-     #         cluster_colors = c('firebrick',
-      #                           'steelblue',
-       #                          'darkolivegreen',
-        #                         'black'))
-
-  plot_nbclust(test_distances$sumofsquares,
-               k = 3,
-               FUNcluster = cluster::pam,
-               method = 'silhouette')
-
-  plot_som(test_kohonen)
-
-  plot_train_som(test_kohonen)
-
-  plot_point(data = iris,
-             x_var = 'Sepal.Length',
-             y_var = 'Sepal.Width',
-             fill_var = 'Species')
-
-  clustTools:::get_data_dim(test_distances$cosine)
-
-  test_vec <- c(rep('a', 10), rep('b', 5), rep('c', 10))
-
-  test_dists <- c(sample(5:15, 10), sample(1:10, 5), sample(1:10, 10))
-
-  clustTools:::vote_simple(test_vec, resolve_ties = FALSE)
-
-  clustTools:::vote_kernel(test_vec,
-                           dist_vec = test_dists)
-
+  test_wines <- wines[-wine_ids, ]
 
 # testing the reduction methods -----
 
@@ -111,6 +76,48 @@
                 red_fun = 'fa',
                 kdim = 2,
                 scores = 'Bartlett')
+
+
+
+  test_red$som <- som_reduce(train_wines,
+                             distance_method = 'euclidean',
+                             xdim = 2,
+                             ydim = 3,
+                             topo = 'hexagonal',
+                             neighbourhood.fct = 'gaussian',
+                             toroidal = TRUE,
+                             rlen = 1000,
+                             mode = 'batch')
+
+  test_red$umap_wines <- reduce_data(train_wines,
+                                     distance_method = 'manhattan',
+                                     kdim = 2,
+                                     red_fun = 'umap')
+
+  test_red$umap_wines %>%
+    plot
+
+  test_red$umap_wines %>%
+    predict(test_wines) %>%
+    plot
+
+  test_red$umap_wines %>%
+    np %>%
+    summary
+
+  test_red$umap_wines %>%
+    predict(test_wines) %>%
+    np %>%
+    summary
+
+  test_red$pca %>%
+    predict(newdata = new_data) %>%
+    np %>%
+    summary
+
+  test_red$pca %>%
+    np %>%
+    summary
 
   ## their methods
 
@@ -179,10 +186,11 @@
                                 minPts = 10)
 
   test_som <- som_cluster(data = test_data,
-                          distance_method = 'cosine',
-                          xdim = 4,
+                          distance_method = 'chebyshev',
+                          xdim = 5,
                           ydim = 4,
                           topo = 'hexagonal',
+                          toroidal = TRUE,
                           rlen = 1000)
 
 # Clust_analysis OOP -----
@@ -323,12 +331,12 @@
 # SOM combi clustering and its OOP -----
 
   test_combi <- combi_cluster(data = test_data,
-                              distance_som = 'manhattan',
+                              distance_som = 'canberra',
                               xdim = 5,
                               ydim = 4,
                               topo = 'hexagonal',
                               neighbourhood.fct = 'gaussian',
-                              toroidal = FALSE,
+                              toroidal = TRUE,
                               rlen = 1000,
                               node_clust_fun = hcluster,
                               k = 3,
@@ -870,4 +878,47 @@
   cross_distance(test_batch_combi, train_batch_combi) %>% plot('mean')
 
 
-# END -----
+# Neighborhood preservation --------
+
+  test_hcl %>% np %>% plot()
+
+  test_som %>% np %>% summary
+
+  test_combi %>% np(type = 'node') %>% summary
+
+  test_combi %>% np(type = 'data') %>% summary
+
+  test_combi %>% np(type = 'final') %>% plot
+
+  test_red %>%
+    map(np)
+
+  test_red$mds %>% np %>% summary
+
+  test_red$umap %>% np %>% summary
+
+  test_data %>%
+    reduce_data(distance_method = 'motyka',
+                kdim = 2,
+                red_fun = 'umap') %>%
+    np %>%
+    summary
+
+  test_red$pca %>%
+    np %>%
+    plot
+
+  test_data %>%
+    reduce_data(distance_method = 'motyka',
+                kdim = 2,
+                red_fun = 'umap') %>%
+    np %>%
+    plot
+
+# Topology error -------
+
+  te(test_som) %>% summary
+
+  te(test_combi, type = 'final')
+
+# END ------

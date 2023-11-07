@@ -11,6 +11,7 @@
 \alias{dist.combi_analysis}
 \alias{extract.red_analysis}
 \alias{model.frame.red_analysis}
+\alias{dist.red_analysis}
 \title{Extract features of a clust_analysis object.}
 \usage{
 extract(x, ...)
@@ -39,11 +40,14 @@ extract(x, ...)
 
 \method{extract}{red_analysis}(
   x,
-  type = c("component_tbl", "scores", "loadings", "data", "sdev", "object"),
+  type = c("component_tbl", "scores", "loadings", "data", "sdev", "object", "distance",
+    "layout_distance"),
   ...
 )
 
 \method{model.frame}{red_analysis}(formula, ...)
+
+\method{dist}{red_analysis}(x, type = c("distance", "layout"), ...)
 }
 \arguments{
 \item{x}{an object.}
@@ -65,6 +69,8 @@ components.
 the self-organizing map (SOM) nodes. Available only for clustering analyses
 done with SOM.
 The U matrix is computed with \code{\link[kohonen]{object.distances}}.
+\item \code{layout} and \code{layout_distance} computes distances between observations in
+the dimensionality reduction layout.
 }}
 
 \item{formula}{an object.}

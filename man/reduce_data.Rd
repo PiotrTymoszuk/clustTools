@@ -17,9 +17,7 @@ reduce_data(
 (class \code{dist}).}
 
 \item{distance_method}{name of the distance metric, see:
-\code{\link{get_kernel_info}}. Valid only for MDS and UMAP.
-For UMAP, the distance is specified by a
-\code{\link[umap]{umap.defaults}} object.}
+\code{\link{get_kernel_info}}. Explicitly used only by MDS and UMAP.}
 
 \item{kdim}{dimension number.}
 
@@ -31,7 +29,9 @@ like the \code{\link[umap]{umap.defaults}} object for UMAP,
 \code{\link[stats]{factanal}} (FA).}
 }
 \value{
-a \code{\link{red_analysis}} object.
+a \code{\link{red_analysis}} object with, among others,
+\code{\link{plot.red_analysis}}, \code{\link{summary.red_analysis}} and
+\code{\link{predict.red_analysis}} methods.
 }
 \description{
 Performs dimensionality reduction of a data frame with principal

@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{red_analysis}(
   x,
-  type = c("component_tbl", "scores", "loadings", "scree"),
+  type = c("component_tbl", "scores", "loadings", "scree", "neighborhood"),
   label_points = TRUE,
   cust_theme = ggplot2::theme_classic(),
   segment_color = "steelblue",
@@ -17,10 +17,14 @@
 \item{x}{a \code{red_analysis} object, created with \code{\link{reduce_data}}.}
 
 \item{type}{plot type:
-'component_tbl' or 'score' present the scores for particular observations in
-a scatter plot.
-'loadings' plot the variable PCA loadings as a scatter plot.
-'scree' plots the percentage of component's variances as a line plot.}
+\itemize{
+\item 'component_tbl' or 'score' present the scores for particular observations
+in a scatter plot
+\item 'loadings' plot the variable PCA loadings as a scatter plot.
+\item 'scree' plots the percentage of component's variances as a line plot.
+\item 'neighborhood' plots fractions of nearest neighbors of the data points
+preserved in the neighborhood in the reduced layout. See: \code{\link{np}}.
+}}
 
 \item{label_points}{logical, should the variable names be displayed in the
 plot? Valid only for the PCA loadings plot.}
@@ -29,10 +33,11 @@ plot? Valid only for the PCA loadings plot.}
 
 \item{segment_color}{color of the lines presented in the PCA loading plot.}
 
-\item{...}{extra arguments passed to \code{\link{plot_point}}.}
+\item{...}{extra arguments passed to \code{\link{plot_point}}
+('component_tbl', 'score', 'loadings') or \code{\link{np}} ('neighborhood').}
 }
 \value{
-a ggplot object.
+a \code{ggplot} object.
 }
 \description{
 Plots the component table, loadings table - in both cases the
@@ -41,6 +46,5 @@ a scree plot of the variance percentages associated with
 the components/dimensions.
 }
 \details{
-The loadings table plot is available only for the PCA \code{red_analysis}
-objects.
+The loadings table plot is available only for the PCA \code{red_analysis} objects.
 }

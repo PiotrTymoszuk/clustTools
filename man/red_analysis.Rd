@@ -21,12 +21,11 @@ A named list with the following elements is required as the \code{x} argument:
 \itemize{
 \item \code{red_obj} with the analysis output,
 \item \code{red_fun} name of the reduction function,
-}
-
-\code{component_tbl} a data frame with component/score values for the observations,
-
-\code{loadings} a data frame with variable loadings, relevant e.g. for PCA or
+\item \code{dist_method} name of the distance metric,
+\item \code{component_tbl} a data frame with component/score values for the observations,
+\item \code{loadings} a data frame with variable loadings, relevant e.g. for PCA or
 factor analysis,
+}
 
 \code{data} a quosure calling the original data set.
 }

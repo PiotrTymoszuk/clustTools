@@ -81,7 +81,7 @@
                   topo = 'hexagonal',
                   neighbourhood.fct = 'gaussian',
                   toroidal = FALSE,
-                  rlen = 2000,
+                  rlen = 3000,
                   node_clust_fun = kcluster,
                   k = 3,
                   clust_fun = 'pam')
@@ -94,7 +94,7 @@
                   topo = 'hexagonal',
                   neighbourhood.fct = 'gaussian',
                   toroidal = FALSE,
-                  rlen = 2000,
+                  rlen = 3000,
                   node_clust_fun = kcluster,
                   k = 3,
                   clust_fun = 'pam')
@@ -107,7 +107,7 @@
                   topo = 'hexagonal',
                   neighbourhood.fct = 'gaussian',
                   toroidal = FALSE,
-                  rlen = 2000,
+                  rlen = 3000,
                   node_clust_fun = kcluster,
                   k = 3,
                   clust_fun = 'pam')
@@ -130,6 +130,42 @@
     som_convergence_plots$som_pam_manhattan +
     som_convergence_plots$som_pam_cosine +
     plot_layout(ncol = 2)
+
+  algos %>%
+    map_dbl(qe)
+
+  algos %>%
+    map(pbc) %>%
+    map_dbl(~.x$convergence_stat)
+
+  ## topology errors within SOM nodes and the final clusters
+
+  algos %>%
+    map(te, type = 'node') %>%
+    map(summary) %>%
+    map(filter,  clust_id == 'global')
+
+  algos %>%
+    map(te, type = 'final') %>%
+    map(summary)
+
+  ## neighborhood preservation:
+  ## data -> SOM nodes
+  ## SOM nodes -> clusters
+  ## data -> clusters
+
+  algos %>%
+    map(np, type = 'data') %>%
+    map(summary) %>%
+    map(filter, clust_id == 'global')
+
+  algos %>%
+    map(np, type = 'node') %>%
+    map(summary)
+
+  algos %>%
+    map(np, type = 'final') %>%
+    map(summary)
 
 # Clustering of the U matrix, cluster number ------
 
@@ -171,7 +207,13 @@
 
 # Semi-supervised clustering ------
 
-Both
+  cosine_clusters <- list()
+
+  cosine_clusters$train <- algos$som_pam_cosine
+
+  cosine_clusters$test <- predict(cosine_clusters$train,
+                                  newdata = wine_lst$test,
+                                  type = 'som')
 
   ## comparison of variances and silhouette widths
   ## in the training and test data portions
@@ -183,6 +225,25 @@ Both
   cosine_silhouettes <- cosine_clusters %>%
     map(silhouette) %>%
     map(summary)
+
+  ## neighborhood preservation
+
+  cosine_neighborhood <- list()
+
+  cosine_neighborhood$train <- np(cosine_clusters$train,
+                                  kNN_data = 5,
+                                  type = 'final')
+
+  cosine_neighborhood$test <- np(cosine_clusters$test,
+                                 kNN_data = 5)
+
+  cosine_neighborhood_plots <- cosine_neighborhood %>%
+    map(plot) %>%
+    map2(., c('Wines: training', 'Wines: test'),
+         ~.x + labs(title = .y))
+
+  cosine_neighborhood_plots$train +
+    cosine_neighborhood_plots$test
 
 # Visualization: heat maps -------
 

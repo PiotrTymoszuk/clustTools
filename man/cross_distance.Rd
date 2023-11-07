@@ -7,7 +7,7 @@
 \alias{cross_distance.min_analysis}
 \alias{cross_distance.combi_analysis}
 \alias{cross_distance.umatrix_analysis}
-\title{Compute cross-distances between two data frames}
+\title{Compute cross-distances between data frames or clusters}
 \usage{
 cross_distance(x, ...)
 

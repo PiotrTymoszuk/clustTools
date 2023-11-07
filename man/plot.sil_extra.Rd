@@ -37,6 +37,9 @@ presented in the plot.}
 
 \item{...}{extra arguments passed to \code{\link[ggplot2]{geom_bar}}.}
 }
+\value{
+a \code{ggplot} class graphic.
+}
 \description{
 Generates a classical bar plot of silhouette width distribution in clusters.
 }

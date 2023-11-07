@@ -107,7 +107,7 @@
         ~.x +
           theme(plot.tag.position = 'bottom'))
 
-# Silhouettes Clustering variance --------
+# Silhouettes, clustering variance and neighborhood preservation --------
 
   ## mean silhouettes
 
@@ -123,6 +123,12 @@
   cl_variances <- clust_objects %>%
     map(var) %>%
     map_dbl(~.x$frac_var)
+
+  ## neighborhood preservation
+
+  cl_neighborhood <- clust_objects %>%
+    map(np) %>%
+    map(summary)
 
 # Heat maps of distances ------
 
@@ -165,7 +171,7 @@
             newdata = biopsy_lst$test,
             type = 'propagation')
 
-  ## explained variance and silhouette width
+  ## explained variance, silhouette width and neighborhood preservation
 
   kmeans_variance <- kmeans_clusters %>%
     map(var) %>%
@@ -173,6 +179,10 @@
 
   kmeans_silhouette <- kmeans_clusters %>%
     map(silhouette) %>%
+    map(summary)
+
+  kmeans_neighborhood <- kmeans_clusters %>%
+    map(np) %>%
     map(summary)
 
   ## heat-maps
