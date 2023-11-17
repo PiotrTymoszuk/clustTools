@@ -14,6 +14,8 @@ cv_cluster(
   resolve_ties = FALSE,
   kernel_fun = function(x) 1/x,
   clustering_fun = clustTools::kcluster,
+  kNN_data = 5,
+  kNN_cluster = NULL,
   seed = 1234,
   .parallel = FALSE,
   ...
@@ -49,6 +51,14 @@ only to the simple unweighted voting algorithm.}
 
 \item{clustering_fun}{clustering function. Should return a
 \code{clust_analysis} object.}
+
+\item{kNN_data}{number of the nearest neighbors in the genuine data set
+used for calculation of neighborhood preservation. See \code{\link{np}}
+for details.}
+
+\item{kNN_cluster}{number of the nearest neighbors of the given cluster used
+for calculation of neighborhood preservation. See \code{\link{np}} for
+details.}
 
 \item{seed}{initial setting of the random number generator.}
 
@@ -108,4 +118,9 @@ Heidelberg (1995). doi:10.1007/978-3-642-97610-0
 
 Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0.
 J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
+
+Venna J, Kaski S. Neighborhood preservation in nonlinear projection
+methods: An experimental study. Lect Notes Comput Sci (including Subser Lect
+Notes Artif Intell Lect Notes Bioinformatics) (2001) 2130:485–491.
+doi:10.1007/3-540-44668-0_68
 }

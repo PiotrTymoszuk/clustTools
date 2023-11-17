@@ -11,6 +11,7 @@
 \alias{is_sil_extra}
 \alias{is_cluster_cv}
 \alias{is_knb}
+\alias{is_tuner}
 \title{Test class inheritance.}
 \usage{
 is_clust_analysis(x)
@@ -32,6 +33,8 @@ is_sil_extra(x)
 is_cluster_cv(x)
 
 is_knb(x)
+
+is_tuner(x)
 }
 \arguments{
 \item{x}{an object.}
@@ -42,5 +45,5 @@ a logical value.
 \description{
 Tests if the object is an instance of the \code{red_analysis}, \code{clust_analysis},
 \code{combi_analysis}, \code{importance}, \code{cross_dist}, \code{sil_extra}, \code{min_analysis},
-\code{umatrix_analysis}, \code{cluster_cv} or \code{knb} class.
+\code{umatrix_analysis}, \code{cluster_cv}, \code{knb} or \code{tuner} class.
 }

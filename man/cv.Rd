@@ -17,6 +17,8 @@ cv(x, ...)
   simple_vote = TRUE,
   resolve_ties = FALSE,
   kernel_fun = function(x) 1/x,
+  kNN_data = 5,
+  kNN_cluster = NULL,
   seed = 1234,
   .parallel = FALSE,
   ...
@@ -32,6 +34,8 @@ cv(x, ...)
   simple_vote = TRUE,
   resolve_ties = FALSE,
   kernel_fun = function(x) 1/x,
+  kNN_data = 5,
+  kNN_cluster = NULL,
   seed = 1234,
   .parallel = FALSE,
   ...
@@ -59,6 +63,14 @@ only to the simple unweighted voting algorithm.}
 
 \item{kernel_fun}{kernel function transforming the distance into weight.}
 
+\item{kNN_data}{number of the nearest neighbors in the genuine data set
+used for calculation of neighborhood preservation. See \code{\link{np}}
+for details.}
+
+\item{kNN_cluster}{number of the nearest neighbors of the given cluster used
+for calculation of neighborhood preservation. See \code{\link{np}} for
+details.}
+
 \item{seed}{initial setting of the random number generator.}
 
 \item{.parallel}{logical, should the CV be run in parallel?}
@@ -69,10 +81,11 @@ a list of class \code{cluster_cv} containing the following elements:
 \item the global \code{\link{clust_analysis}} object (\code{clust_analysis_object})
 \item kNN projection (prediction) results (\code{predictions})
 \item a data frame with the classification error, accuracy, fraction of
-explained clustering variance and silhouette for the out-of-fold
-predictions (\code{fold_stats})
+explained clustering variance, silhouette and neighbor preservation for
+the out-of-fold predictions (\code{fold_stats})
 \item means and BCA's 95\% confidence intervals for the classification error,
-accuracy, fraction of explained variance and silhouette (\code{summary})
+accuracy, fraction of explained variance, silhouette and neighborhood
+preservation (\code{summary})
 }
 
 Note the \code{\link{summary.cluster_cv}} and
@@ -128,4 +141,9 @@ Heidelberg (1995). doi:10.1007/978-3-642-97610-0
 
 Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0.
 J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
+
+Venna J, Kaski S. Neighborhood preservation in nonlinear projection
+methods: An experimental study. Lect Notes Comput Sci (including Subser Lect
+Notes Artif Intell Lect Notes Bioinformatics) (2001) 2130:485–491.
+doi:10.1007/3-540-44668-0_68
 }

@@ -2,24 +2,38 @@
 % Please edit documentation in R/red_analysis_oop.R
 \name{plot.red_analysis}
 \alias{plot.red_analysis}
-\title{Plot features of a red_analysis object.}
+\alias{plot.clust_red}
+\title{Plot features of a \code{red_analysis} object.}
 \usage{
 \method{plot}{red_analysis}(
   x,
   type = c("component_tbl", "scores", "loadings", "scree", "neighborhood"),
   label_points = TRUE,
+  label_clust = FALSE,
+  cust_theme = ggplot2::theme_classic(),
+  segment_color = "steelblue",
+  ...
+)
+
+\method{plot}{clust_red}(
+  x,
+  type = c("component_tbl", "scores", "loadings", "scree", "neighborhood"),
+  label_points = TRUE,
+  label_clust = TRUE,
   cust_theme = ggplot2::theme_classic(),
   segment_color = "steelblue",
   ...
 )
 }
 \arguments{
-\item{x}{a \code{red_analysis} object, created with \code{\link{reduce_data}}.}
+\item{x}{a \code{red_analysis} object, created with \code{\link{reduce_data}} or
+\code{components()} called for clustering analyses.}
 
 \item{type}{plot type:
 \itemize{
-\item 'component_tbl' or 'score' present the scores for particular observations
-in a scatter plot
+\item 'component_tbl' or 'score' present the scores (layout) for particular
+observations in a scatter plot. If \code{label_clust = TRUE}, point color codes
+for the optional cluster assignment information.
 \item 'loadings' plot the variable PCA loadings as a scatter plot.
 \item 'scree' plots the percentage of component's variances as a line plot.
 \item 'neighborhood' plots fractions of nearest neighbors of the data points
@@ -28,6 +42,9 @@ preserved in the neighborhood in the reduced layout. See: \code{\link{np}}.
 
 \item{label_points}{logical, should the variable names be displayed in the
 plot? Valid only for the PCA loadings plot.}
+
+\item{label_clust}{logical, should the cluster assignment (if available) be
+coded be the point color?}
 
 \item{cust_theme}{a ggplot plot theme.}
 
@@ -46,5 +63,10 @@ a scree plot of the variance percentages associated with
 the components/dimensions.
 }
 \details{
-The loadings table plot is available only for the PCA \code{red_analysis} objects.
+The loadings table plot is available only for the PCA and factor
+analysis \code{red_analysis} objects.
+For \code{red_analysis} objects created with \code{clust_analysis} objects, scatter
+plots of the  scores/components table/layout can convey
+the cluster assignment information coded by the point or bar color
+(\code{label_clust = TRUE}).
 }

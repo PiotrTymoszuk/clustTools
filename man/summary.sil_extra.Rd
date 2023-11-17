@@ -13,7 +13,9 @@
 }
 \value{
 a data frame with numeric statistics for the whole clustering
-structure (\code{clust_id} = 'global') and particular clusters.
+structure (\code{clust_id} = 'global') and particular clusters (mean, SD, median,
+interquartile range, 95\% percentile range, range, number and fraction of
+potentially misclassified observations with negative silhouette widths).
 }
 \description{
 Computes mean, SD, median, interquartile range, 95\% range, range as well as

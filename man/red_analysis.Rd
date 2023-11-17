@@ -28,4 +28,10 @@ factor analysis,
 }
 
 \code{data} a quosure calling the original data set.
+
+If the \code{component_tbl} data frame contains the cluster assignment information
+an object of the \code{clust_red} sub-class is created. This sub-class inherits
+almost all methods from the superclass \code{red_analysis}. The only difference
+concerns the \code{plot()} method, which, by default generates layout (score)
+scatter plots with the cluster assignment coded by the point color.
 }

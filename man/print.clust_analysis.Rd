@@ -5,7 +5,8 @@
 \alias{print.combi_analysis}
 \alias{print.cross_dist}
 \alias{print.red_analysis}
-\title{Printing of a clust_analysis object.}
+\alias{print.tuner}
+\title{Printing of objects.}
 \usage{
 \method{print}{clust_analysis}(x, ...)
 
@@ -14,6 +15,8 @@
 \method{print}{cross_dist}(x, ...)
 
 \method{print}{red_analysis}(x, ...)
+
+\method{print}{tuner}(x, ...)
 }
 \arguments{
 \item{x}{an object.}

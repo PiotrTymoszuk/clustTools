@@ -12,6 +12,7 @@
   kdim = NULL,
   red_fun = c("pca", "mds", "umap"),
   with = c("distance", "data", "umatrix"),
+  train_object = NULL,
   ...
 )
 
@@ -22,6 +23,7 @@
   kdim = NULL,
   red_fun = c("pca", "mds", "umap"),
   with = c("distance", "data", "umatrix"),
+  train_object = NULL,
   ...
 )
 
@@ -45,6 +47,12 @@ clusters.}
 \item{with}{type of the input data for the reduction analysis:
 the clustering data ('data'), the matrix of distances between observations
 ('distance') or U matrix between SOM nodes ('umatrix').}
+
+\item{train_object}{an optional \code{red_analysis} object wchich will be used as
+a training layout. This works currently only for PCA and UMAP and in case
+of single layer data frames as clustering data.
+Please refer to \code{\link[stats]{prcomp}} and \code{\link[umap]{umap}} for
+details.}
 
 \item{...}{extra arguments passed to \code{\link{reduce_data}}.}
 }
