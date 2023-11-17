@@ -24,6 +24,12 @@
 #'
 #' `data` a quosure calling the original data set.
 #'
+#' If the `component_tbl` data frame contains the cluster assignment information
+#' an object of the `clust_red` sub-class is created. This sub-class inherits
+#' almost all methods from the superclass `red_analysis`. The only difference
+#' concerns the `plot()` method, which, by default generates layout (score)
+#' scatter plots with the cluster assignment coded by the point color.
+#'
 #' @param x a named list, see Details.
 #'
 #' @return a `red_analysis` object with the elements listed in Details.
@@ -67,7 +73,19 @@
 
     ## output
 
-    structure(x, class = 'red_analysis')
+    x <- structure(x, class = 'red_analysis')
+
+    if(is.data.frame(x$component_tbl)) {
+
+      if('clust_id' %in% names(x$component_tbl)) {
+
+        x <- structure(x, class = c('clust_red', class(x)))
+
+      }
+
+    }
+
+    x
 
   }
 
@@ -155,6 +173,7 @@
 
     stopifnot(x$clust_fun %in% c('hclust',
                                  'kmeans',
+                                 'htk',
                                  'dbscan',
                                  'som',
                                  'pam',
@@ -529,12 +548,12 @@
 
     err_txt <-
       paste("The 'fold_stats' element has to be a data frame with the",
-            "'fold', 'corr_rate', 'err_rate', 'frac_var' and 'sil_width'",
+            "'fold', 'accuracy', 'error', 'frac_var' and 'sil_width'",
             "variables")
 
     if(!is.data.frame(x$fold_stats)) stop(err_txt, call. = FALSE)
 
-    if(any(!c('fold', 'corr_rate', 'err_rate', 'frac_var', 'sil_width') %in% names(x$fold_stats))) {
+    if(any(!c('fold', 'accuracy', 'error', 'frac_var', 'sil_width') %in% names(x$fold_stats))) {
 
       stop(err_txt, call. = FALSE)
 
@@ -625,6 +644,104 @@
     }
 
     structure(x, class = c('knb', class(x)))
+
+  }
+
+# Tuning results ------
+
+#' Create an `tuner` class object.
+#'
+#' @description
+#' Creates and object of the `tuner` class on the top of a list with tuning
+#' of parameters of cluster analysis or prediction.
+#'
+#' @details
+#' The input list has to have three elements:
+#'
+#' * `analysis`: a `clust_analysis` or `combi_analysis` object created with the
+#' best set of the tuning parameters
+#'
+#' * `stats`: a data frame with values of quality stats (silhouette width,
+#' fraction of potentially misclassified observations/negative silhouette width,
+#' fraction of explained clustering variance, and fraction of preserved nearest
+#' neighbors)
+#'
+#' * `fun`: name of the tuning function
+#'
+#' * `dataset`: a string specified which data was used during the tuning: the
+#' training data set or cross-validation
+#'
+#' * `type`: type of analysis, development or prediction
+#'
+#' * `clust_vars`: a vector of names of clustering variables
+#'
+#' * `tune_params`: a vector of names of the tuning parameters
+#'
+#' * `tune_criteria`: a data frame that specifies which criteria were applied
+#' to select the best combination of the tuning parameters
+#'
+#' * `best_tune`: a data frame storing the best values of the tuning parameters
+#'
+#' @param x a list with elements specified in Details.
+#'
+#' @return an instance of the `tuner` class as described in Details.
+
+  tuner <- function(x) {
+
+    ## entry control -------
+
+    elements <- c('analysis',
+                  'stats',
+                  'fun',
+                  'dataset',
+                  'type',
+                  'clust_vars',
+                  'tune_params',
+                  'tune_criteria',
+                  'best_tune')
+
+    err_txt <-
+      paste("'x' has to be a list with the",
+            paste(elements, collapse = ', '),
+            "elements.")
+
+    if(!is.list(x)) stop(err_txt, call. = FALSE)
+
+    if(any(!elements %in% names(x))) {
+
+      stop(err_txt, call. = FALSE)
+
+    }
+
+    stat_vars <- c('sil_width',
+                   'frac_misclassified',
+                   'frac_var',
+                   'frac_np')
+
+    err_txt <-
+      paste("The `stats` element of 'x' has to be a data frame with the",
+            paste(stat_vars, collapse = ', '),
+            "columns")
+
+    if(!is.data.frame(x$stats)) stop(err_txt, call. = FALSE)
+
+    if(any(!stat_vars %in% names(x$stats))) {
+
+      stop(err_txt, call. = FALSE)
+
+    }
+
+    if(!is_clust_analysis(x$analysis) & !is_combi_analysis(x$analysis)) {
+
+      stop(paste("The `analysis` element of 'x' has to be an instance of",
+                 "of the 'clust_analysis' or 'combi_analysis' class."),
+           call. = FALSE)
+
+    }
+
+    ## class setting -------
+
+    structure(x, class = 'tuner')
 
   }
 

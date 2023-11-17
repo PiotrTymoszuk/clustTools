@@ -328,11 +328,17 @@
   cosine_feature_hm$train +
     cosine_feature_hm$test
 
+# Cross distances -----
+
+  cross_distance(cosine_clusters$train,
+                 cosine_clusters$test) %>%
+    plot('mean')
+
 # Feature importance -------
 
-  cosine_importance <- impact.combi_analysis(cosine_clusters$train,
-                                             n_iter = 50,
-                                             .parallel = TRUE)
+  cosine_importance <- impact(cosine_clusters$train,
+                              n_iter = 50,
+                              .parallel = TRUE)
 
   plot(cosine_importance)
 
@@ -360,9 +366,9 @@
     map(mutate,
         obs = vintage,
         pred = car::recode(clust_id,
-                           "'1' = 'Barolo';
-                           '2' = 'Grignolino';
-                           '3' = 'Barbera'"),
+                           "'1' = 'Barbera';
+                           '2' = 'Barolo';
+                           '3' = 'Grignolino'"),
         pred = factor(pred,
                       levels = c('Barbera', 'Barolo', 'Grignolino')))
 

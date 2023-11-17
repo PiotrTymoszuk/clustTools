@@ -201,13 +201,26 @@
                        function(data, clust) map(clust,
                                                  ~data[.x, , drop = FALSE]))
 
+    ## I'm working with safely() here. It is possible that some clusters
+    ## are empty in one of the tested objects
 
     dist_lst <-
       furrr::future_map(pairs,
-                        ~cross_distance(clust_data$x[[.x[1]]],
-                                        clust_data$y[[.x[2]]],
-                                        method = method),
+                        ~purrr::safely(cross_distance)(clust_data$x[[.x[1]]],
+                                                       clust_data$y[[.x[2]]],
+                                                       method = method),
                         .options = furrr::furrr_options(seed = TRUE))
+
+    dist_errors <- compact(map(dist_lst, ~.x$error))
+
+    if(length(dist_errors) > 0) {
+
+      warning('Distance calcultion failed for come cluster pairs.',
+              call. = FALSE)
+
+    }
+
+    dist_lst <- compact(map(dist_lst, ~.x$result))
 
     cross_dist(dist_lst,
                type = 'heterologous',

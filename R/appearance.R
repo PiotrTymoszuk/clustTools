@@ -1,6 +1,6 @@
 # Appearance for the S3 class objects
 
-#' Printing of a clust_analysis object.
+#' Printing of objects.
 #'
 #' @description
 #' Prints a `clust_analysis`, `combi_analysis`, `red_analysis`
@@ -33,7 +33,12 @@
 
     stopifnot(is_combi_analysis(x))
 
-    purrr::walk(x$clust_analyses, print)
+    cat(paste('Combined SOM/clusetring analysis with',
+               x$dist_method, 'distance method.'))
+
+    cat('\nCluster assignment:\n')
+
+    print(as_tibble(x$clust_assignment))
 
   }
 
@@ -61,8 +66,26 @@
     stopifnot(is_red_analysis(x))
 
     cat(paste0(toupper(x$red_fun), ' reduction analysis object.'))
+
     cat('\nComponents:\n')
+
     print(as_tibble(x$component_tbl))
+
+  }
+
+#' @rdname print.clust_analysis
+#' @export
+
+  print.tuner <- function(x, ...) {
+
+    stopifnot(is_tuner(x))
+
+    cat(paste('Tuning results for',
+              paste(x$tune_params, collapse = ', ')))
+
+    cat('\nBest parameter combination:\n')
+
+    print(as_tibble(x$best_tune))
 
   }
 

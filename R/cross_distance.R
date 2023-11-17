@@ -162,7 +162,19 @@
 
       if(!is_multi_layer(x)) {
 
-        return(cross_single_homolog(x, method))
+        if(!is.null(method)) {
+
+          return(cross_single_homolog(x, method))
+
+        } else {
+
+          dist_obj <- cross_distance.min_analysis(x)
+
+          attr(dist_obj, 'dist_method') <- x$dist_method
+
+          return(dist_obj)
+
+        }
 
       } else {
 
@@ -239,11 +251,16 @@
           ~list(clust_assignment[[.x[1]]],
                 clust_assignment[[.x[2]]]))
 
-    ## cross-distance objects
+    ## cross-distance objects: subsetting done in two steps
+    ## to prevent returning one-dimensional vectors
 
     dist_lst <-
       map(pairs,
-          ~general_dist[.x[[1]], .x[[2]]], drop = FALSE)
+          ~general_dist[.x[[1]], , drop = FALSE])
+
+    dist_lst <-
+      map2(dist_lst, pairs,
+           ~.x[, .y[[2]], drop = FALSE])
 
     cross_dist(dist_lst,
                type = 'homologous',

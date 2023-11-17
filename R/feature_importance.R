@@ -163,6 +163,8 @@
 
     ## entry control --------
 
+    start_time <- Sys.time()
+
     stopifnot(is_clust_analysis(x))
     stopifnot(is.numeric(n_iter))
 
@@ -180,25 +182,49 @@
 
     }
 
+    clustering_fun <-
+      switch(x$clust_fun,
+             hclust = hcluster,
+             kmeans = kcluster,
+             htk = htk_cluster,
+             pam = kcluster,
+             dbscan = dbscan_cluster,
+             som = som_cluster,
+             supersom = som_cluster)
+
+    ## parallel backend and benchmarking -------
+
+    message(paste('Permutation importance testing with',
+                  n_iter, 'iterations'))
+
+    if(.parallel) future::plan('multisession')
+
+    on.exit(message(paste('Elapsed:', Sys.time() - start_time)),
+            add = TRUE)
+
+    on.exit(future::plan('sequential'))
+
     ## common parameters --------
+
+    cmm_list <-
+      list2(data = model.frame(x),
+            distance_method = distance_names,
+            .parallel = .parallel,
+            k = nrow(ngroups(x)),
+            hc_method = x$hc_method,
+            clust_fun = x$clust_fun,
+            lambdas = x$lambdas,
+            xdim = x$grid$xdim,
+            ydim = x$grid$ydim,
+            topo = x$grid$topo,
+            eps = x$eps,
+            minPts = x$minPts,
+            neighbourhood.fct = as.character(x$grid$neighbourhood.fct),
+            toroidal = x$grid$toroidal)
 
     if(n_iter == 1) {
 
-      cmm_args <-
-        list2(data = model.frame(x),
-              distance_method = distance_names,
-              seed = seed,
-              .parallel = .parallel,
-              k = nrow(ngroups(x)),
-              hc_method = x$hc_method,
-              clust_fun = x$clust_fun,
-              xdim = x$grid$xdim,
-              ydim = x$grid$ydim,
-              topo = x$grid$topo,
-              eps = x$eps,
-              minPts = x$minPts,
-              neighbourhood.fct = as.character(x$grid$neighbourhood.fct),
-              toroidal = x$grid$toroidal)
+      cmm_args <- c(cmm_list, list2(seed = seed))
 
       cmm_args <- c(cmm_args, x$dots)
 
@@ -211,21 +237,7 @@
       seeds <- set_names(seeds, paste0('run_', 1:n_iter))
 
       cmm_args <-
-        map(seeds,
-            ~list2(data = model.frame(x),
-                   distance_method = distance_names,
-                   seed = .x,
-                   .parallel = FALSE,
-                   k = nrow(ngroups(x)),
-                   hc_method = x$hc_method,
-                   clust_fun = x$clust_fun,
-                   xdim = x$grid$xdim,
-                   ydim = x$grid$ydim,
-                   topo = x$grid$topo,
-                   eps = x$eps,
-                   minPts = x$minPts,
-                   neighbourhood.fct = as.character(x$grid$neighbourhood.fct),
-                   toroidal = x$grid$toroidal))
+        map(seeds, ~c(cmm_list, list2(seed = .x)))
 
       cmm_args <- map(cmm_args, ~c(.x, x$dots))
 
@@ -235,7 +247,7 @@
 
     if(n_iter == 1) {
 
-      if(x$clust_fun %in% c('hclust', 'som', 'supersom')) {
+      if(x$clust_fun %in% c('hclust', 'som', 'supersom', 'htk')) {
 
         cmm_args$clust_fun <- NULL
 
@@ -250,13 +262,7 @@
       imp_call <-
         call2('importance_cluster',
               !!!compact(cmm_args),
-              clustering_fun = switch(x$clust_fun,
-                                      hclust = hcluster,
-                                      kmeans = kcluster,
-                                      pam = kcluster,
-                                      dbscan = dbscan_cluster,
-                                      som = som_cluster,
-                                      supersom = som_cluster))
+              clustering_fun = clustering_fun)
 
       return(eval(imp_call))
 
@@ -264,7 +270,7 @@
 
     ## calls: multiple iterations ----------
 
-    if(x$clust_fun %in% c('hclust', 'som', 'supersom')) {
+    if(x$clust_fun %in% c('hclust', 'som', 'supersom', 'htk')) {
 
       for(i in names(cmm_args)) {
 
@@ -288,30 +294,12 @@
       map(cmm_args,
           ~call2('importance_cluster',
                  !!!compact(.x),
-                 clustering_fun = switch(x$clust_fun,
-                                         hclust = hcluster,
-                                         kmeans = kcluster,
-                                         pam = kcluster,
-                                         dbscan = dbscan_cluster,
-                                         som = som_cluster,
-                                         supersom = som_cluster)))
+                 clustering_fun = clustering_fun))
 
-    if(.parallel) {
-
-      future::plan('multisession')
-
-      res <-
-        furrr::future_map(imp_call,
-                          eval,
-                          .options = furrr::furrr_options(seed = TRUE))
-
-      future::plan('sequential')
-
-    } else {
-
-      res <- map(imp_call, eval)
-
-    }
+    res <-
+      suppressMessages(furrr::future_map(imp_call,
+                                         eval,
+                                         .options = furrr::furrr_options(seed = TRUE)))
 
     res <-
       map2_dfr(res, names(res),
@@ -345,6 +333,8 @@
 
     ## entry control -------
 
+    start_time <- Sys.time()
+
     stopifnot(is_combi_analysis(x))
     stopifnot(is.numeric(n_iter))
 
@@ -368,29 +358,45 @@
 
     }
 
+    node_clust_fun = switch(x$clust_analyses$node$clust_fun,
+                            hclust = hcluster,
+                            kmeans = kcluster,
+                            htk = htk_cluster,
+                            pam = kcluster,
+                            dbscan = dbscan_cluster,
+                            som = som_cluster)
+
+    ## parallel backend and benchmarking --------
+
+    message(paste('Permutation importance testing with',
+                  n_iter, 'iterations'))
+
+    if(.parallel) future::plan('multisession')
+
+    on.exit(message(paste('Elapsed:', Sys.time() - start_time)),
+            add = TRUE)
+
+    on.exit(future::plan('sequential'))
+
     ## common parameters -------
+
+    cmm_list <-
+      list2(data = model.frame(x)$observation,
+            clustering_fun = clustering_fun,
+            distance_som = distance_som,
+            distance_method = distance_method,
+            xdim = x$clust_analyses$observation$grid$xdim,
+            ydim = x$clust_analyses$observation$grid$ydim,
+            topo = x$clust_analyses$observation$grid$topo,
+            neighbourhood.fct = as.character(x$clust_analyses$observation$grid$neighbourhood.fct),
+            toroidal = x$clust_analyses$observation$grid$toroidal,
+            rlen = nrow(x$clust_analyses$observation$clust_obj$changes),
+            node_clust_fun = node_clust_fun,
+            .parallel = .parallel)
 
     if(n_iter == 1) {
 
-      args <-
-        list2(data = model.frame(x)$observation,
-              clustering_fun = clustering_fun,
-              distance_som = distance_som,
-              distance_method = distance_method,
-              xdim = x$clust_analyses$observation$grid$xdim,
-              ydim = x$clust_analyses$observation$grid$ydim,
-              topo = x$clust_analyses$observation$grid$topo,
-              neighbourhood.fct = as.character(x$clust_analyses$observation$grid$neighbourhood.fct),
-              toroidal = x$clust_analyses$observation$grid$toroidal,
-              rlen = nrow(x$clust_analyses$observation$clust_obj$changes),
-              node_clust_fun = switch(x$clust_analyses$node$clust_fun,
-                                      hclust = hcluster,
-                                      kmeans = kcluster,
-                                      pam = kcluster,
-                                      dbscan = dbscan_cluster,
-                                      som = som_cluster),
-              seed = seed,
-              .parallel = .parallel)
+      args <- c(cmm_list, list(seed = seed))
 
       args <- c(args, x$dots)
 
@@ -404,26 +410,10 @@
 
       seeds <- set_names(seeds, paste0('run_', 1:n_iter))
 
+      cmm_list$.parallel <- FALSE
+
       args <-
-        map(seeds,
-            ~list2(data = model.frame(x)$observation,
-                   clustering_fun = clustering_fun,
-                   distance_som = distance_som,
-                   distance_method = distance_method,
-                   xdim = x$clust_analyses$observation$grid$xdim,
-                   ydim = x$clust_analyses$observation$grid$ydim,
-                   topo = x$clust_analyses$observation$grid$topo,
-                   neighbourhood.fct = as.character(x$clust_analyses$observation$grid$neighbourhood.fct),
-                   toroidal = x$clust_analyses$observation$grid$toroidal,
-                   rlen = nrow(x$clust_analyses$observation$clust_obj$changes),
-                   node_clust_fun = switch(x$clust_analyses$node$clust_fun,
-                                           hclust = hcluster,
-                                           kmeans = kcluster,
-                                           pam = kcluster,
-                                           dbscan = dbscan_cluster,
-                                           som = som_cluster),
-                   seed = .x,
-                   .parallel = FALSE))
+        map(seeds, ~c(cmm_list, list(seed = .x)))
 
       args <- map(args, ~c(.x, x$dots))
 
@@ -447,14 +437,6 @@
     imp_call <-
       map(args, ~call2('importance_cluster', !!!.x))
 
-    if(.parallel) {
-
-      future::plan('multisession')
-
-    }
-
-    on.exit(future::plan('sequential'))
-
     exports <- c('tidyverse',
                  'rlang',
                  'cluster',
@@ -467,10 +449,10 @@
                  'clustTools')
 
     res <-
-      furrr::future_map(imp_call,
-                        eval,
-                        .options = furrr::furrr_options(seed = TRUE,
-                                                        packages = exports))
+      suppressMessages(furrr::future_map(imp_call,
+                                         eval,
+                                         .options = furrr::furrr_options(seed = TRUE,
+                                                                         packages = exports)))
 
     res <-
       map2_dfr(res, names(res),

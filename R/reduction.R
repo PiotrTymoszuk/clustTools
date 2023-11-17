@@ -30,6 +30,11 @@
 #' @param with type of the input data for the reduction analysis:
 #' the clustering data ('data'), the matrix of distances between observations
 #' ('distance') or U matrix between SOM nodes ('umatrix').
+#' @param train_object an optional `red_analysis` object wchich will be used as
+#' a training layout. This works currently only for PCA and UMAP and in case
+#' of single layer data frames as clustering data.
+#' Please refer to \code{\link[stats]{prcomp}} and \code{\link[umap]{umap}} for
+#' details.
 #' @param ... extra arguments passed to \code{\link{reduce_data}}.
 #'
 #' @return a `red_analysis` object with the component/score table containing
@@ -43,7 +48,8 @@
   components.clust_analysis <- function(object,
                                         kdim = NULL,
                                         red_fun = c('pca', 'mds', 'umap'),
-                                        with = c('distance', 'data', 'umatrix'), ...) {
+                                        with = c('distance', 'data', 'umatrix'),
+                                        train_object = NULL, ...) {
 
     ## entry control -------
 
@@ -55,7 +61,7 @@
 
     if(is.null(kdim)) {
 
-      kdim <- length(unique(object$clust_assignment$clust_id))
+      kdim <- nrow(ngroups(object))
 
     }
 
@@ -76,6 +82,56 @@
     observation <- NULL
     node <- NULL
     clust_id <- NULL
+
+    ## reduction with a trained object ------
+
+    if(!is.null(train_object)) {
+
+      if(check_supersom) {
+
+        warning(paste('Predictions for multi-layer data are not implemented',
+                      'at the moment.'),
+                call. = FALSE)
+
+        return(NULL)
+
+      }
+
+      if(!is_red_analysis(train_object)) {
+
+        stop("'train_object' has to be a 'red_analysis' object.",
+             call. = FALSE)
+
+      }
+
+      red_fun <- train_object$red_fun
+
+      if(!red_fun %in% c('pca', 'umap')) {
+
+        stop("'train_object' has to be a PCA or UMAP analysis.",
+             call. = FALSE)
+
+      }
+
+      if(with %in% c('distance', 'umatrix')) {
+
+        warning('Predictions for distances are not supported.', call. = FALSE)
+
+        return(NULL)
+
+      }
+
+      red_obj <- predict(train_object,
+                         newdata = extract(object, type = with), ...)
+
+      red_obj$component_tbl <-
+        left_join(red_obj$component_tbl,
+                  object$clust_assignment,
+                  by = 'observation')
+
+      return(red_analysis(red_obj))
+
+    }
 
     ## reduction: most cases --------
     ## concerns clustering without multi-layer SOM and distances
@@ -102,7 +158,7 @@
 
       }
 
-      return(red_obj)
+      return(red_analysis(red_obj))
 
     }
 
@@ -134,7 +190,7 @@
 
     }
 
-    red_objects
+    map(red_objects, red_analysis)
 
   }
 
@@ -147,6 +203,7 @@
     NextMethod()
 
   }
+
 #' @rdname components.clust_analysis
 #' @export components.combi_analysis
 #' @export
@@ -154,7 +211,8 @@
   components.combi_analysis <- function(object,
                                         kdim = NULL,
                                         red_fun = c('pca', 'mds', 'umap'),
-                                        with = c('distance', 'data', 'umatrix'), ...) {
+                                        with = c('distance', 'data', 'umatrix'),
+                                        train_object = NULL, ...) {
 
     ## entry control -------
 
@@ -169,7 +227,8 @@
     red_analysis <- components(object$clust_analyses$observation,
                                kdim = kdim,
                                red_fun = red_fun,
-                               with = with, ...)
+                               with = with,
+                               train_object = train_object, ...)
 
     observation <- NULL
 
@@ -237,7 +296,7 @@
 
     }
 
-    data_comps
+    map(data_comps, red_analysis)
 
   }
 

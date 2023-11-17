@@ -76,7 +76,7 @@
 # fitting the SOM -------
 
   ## the layers will be handled by three various distances:
-  ## Euclidean for numeric variables, Manhattan for ordinal variables
+  ## cosine for numeric variables, Manhattan for ordinal variables
   ## and Tanimoto for binary features
 
   car_som <-

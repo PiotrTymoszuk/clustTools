@@ -44,6 +44,11 @@
 #' @references
 #' Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0.
 #' J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
+#' @references
+#' Venna J, Kaski S. Neighborhood preservation in nonlinear projection
+#' methods: An experimental study. Lect Notes Comput Sci (including Subser Lect
+#' Notes Artif Intell Lect Notes Bioinformatics) (2001) 2130:485–491.
+#' doi:10.1007/3-540-44668-0_68
 #'
 #' @param data a numeric data frame, matrix or a `red_analysis` object. If a
 #' `red_analysis` object is provided as the data argument, the observation
@@ -66,6 +71,12 @@
 #' @param kernel_fun kernel function transforming the distance into weight.
 #' @param clustering_fun clustering function. Should return a
 #' `clust_analysis` object.
+#' @param kNN_data number of the nearest neighbors in the genuine data set
+#' used for calculation of neighborhood preservation. See \code{\link{np}}
+#' for details.
+#' @param kNN_cluster number of the nearest neighbors of the given cluster used
+#' for calculation of neighborhood preservation. See \code{\link{np}} for
+#' details.
 #' @param seed initial setting of the random number generator.
 #' @param .parallel logical, should the CV be run in parallel?
 #' @param ... extra arguments passed to the clustering_fun.
@@ -92,6 +103,8 @@
                          resolve_ties = FALSE,
                          kernel_fun = function(x) 1/x,
                          clustering_fun = clustTools::kcluster,
+                         kNN_data = 5,
+                         kNN_cluster = NULL,
                          seed = 1234,
                          .parallel = FALSE, ...) {
 
@@ -242,8 +255,8 @@
                                  by = 'observation'))
 
     correct <- NULL
-    corr_rate <- NULL
-    err_rate <- NULL
+    accuracy <- NULL
+    error <- NULL
     fold <- NULL
 
     test_preds <-
@@ -254,54 +267,57 @@
                        fold = .y))
 
     test_error <- dplyr::summarise(test_preds,
-                                   corr_rate = mean(as.numeric(correct),
-                                                    na.rm = TRUE),
-                                   err_rate = 1 - corr_rate,
+                                   accuracy = mean(as.numeric(correct),
+                                                   na.rm = TRUE),
+                                   error = 1 - accuracy,
                                    .by = 'fold')
 
-    ## variances and silhouettes -------
+    ## variances, silhouettes and neighborhood preservation, out-of-fold  -------
 
-    frac_var <- NULL
-    sil_width <- NULL
+    ## neighborhood preservation seems to be a bit tricky statistic to calculate
+    ## with some distance metrics for a large dimension number, hence,
+    ## I'm working with a safe solution
 
-    test_variances <- map(test_obj, var)
+    test_stats <- map(test_obj,
+                      purrr::safely(summary),
+                      kNN_data = kNN_data,
+                      kNN_cluster = kNN_cluster)
 
-    test_variances <- map2_dfr(test_variances,
-                               names(test_variances),
-                               ~tibble(fold = .y,
-                                       frac_var = .x$frac_var))
+    test_stats <- map(test_stats, ~.x$result)
 
-    test_silhouettes <- map(test_obj, purrr::safely(silhouette))
-
-    test_silhouettes <-
-      compact(map(test_silhouettes, ~.x$result))
-
-    test_silhouettes <- map2_dfr(test_silhouettes,
-                                 names(test_silhouettes),
-                                 ~tibble(fold = .y,
-                                         sil_width = mean(.x$sil_width)))
+    test_stats <- map2_dfr(test_stats, names(test_stats),
+                           ~mutate(.x, fold = .y))
 
     ## summary stats --------
 
-    test_stats <- reduce(list(test_error, test_variances, test_silhouettes),
-                         left_join,
-                         by = 'fold')
+    test_stats <- left_join(test_error,
+                            test_stats,
+                            by = 'fold')
+
+    stat_names <-
+      c('accuracy', 'error',
+        'sil_width', 'frac_misclassified', 'frac_var', 'frac_np')
 
     test_stats <-
-      test_stats[c('fold', 'corr_rate', 'err_rate', 'frac_var', 'sil_width')]
+      select(test_stats,
+             fold,
+             dplyr::all_of(stat_names))
 
     oof_means <-
-      map(test_stats[c('corr_rate', 'err_rate', 'frac_var', 'sil_width')],
-          mean, na.rm = TRUE)
+      map(select(test_stats,
+                 dplyr::all_of(stat_names)),
+          mean,
+          na.rm = TRUE)
 
     bca_err <-
-      map(test_stats[c('corr_rate', 'err_rate', 'frac_var', 'sil_width')],
+      map(select(test_stats,
+                 dplyr::all_of(stat_names)),
           ~.x[!is.na(.x)])
 
     bca_err <- map(bca_err, coxed::bca, conf.level = 0.95)
 
     test_summary <-
-      pmap(list(c('accuracy', 'error', 'frac_var', 'sil_width'),
+      pmap(list(stat_names[stat_names %in% names(test_stats)],
                 oof_means,
                 bca_err),
            function(x, y, z) tibble(!!paste0(x, '_mean') := y,
@@ -371,6 +387,11 @@
 #' @references
 #' Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0.
 #' J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
+#' @references
+#' Venna J, Kaski S. Neighborhood preservation in nonlinear projection
+#' methods: An experimental study. Lect Notes Comput Sci (including Subser Lect
+#' Notes Artif Intell Lect Notes Bioinformatics) (2001) 2130:485–491.
+#' doi:10.1007/3-540-44668-0_68
 #'
 #' @param x an object.
 #' @param nfolds number of CV folds.
@@ -384,6 +405,12 @@
 #' @param resolve_ties logical, should the ties be resolved at random? Applies
 #' only to the simple unweighted voting algorithm.
 #' @param kernel_fun kernel function transforming the distance into weight.
+#' @param kNN_data number of the nearest neighbors in the genuine data set
+#' used for calculation of neighborhood preservation. See \code{\link{np}}
+#' for details.
+#' @param kNN_cluster number of the nearest neighbors of the given cluster used
+#' for calculation of neighborhood preservation. See \code{\link{np}} for
+#' details.
 #' @param seed initial setting of the random number generator.
 #' @param .parallel logical, should the CV be run in parallel?
 #' @param ... extra arguments, currently none.
@@ -395,11 +422,12 @@
 #' * kNN projection (prediction) results (`predictions`)
 #'
 #' * a data frame with the classification error, accuracy, fraction of
-#' explained clustering variance and silhouette for the out-of-fold
-#' predictions (`fold_stats`)
+#' explained clustering variance, silhouette and neighbor preservation for
+#' the out-of-fold predictions (`fold_stats`)
 #'
 #' * means and BCA's 95% confidence intervals for the classification error,
-#' accuracy, fraction of explained variance and silhouette (`summary`)
+#' accuracy, fraction of explained variance, silhouette and neighborhood
+#' preservation (`summary`)
 #'
 #' Note the \code{\link{summary.cluster_cv}} and
 #' \code{\link{extract.cluster_cv}} methods.
@@ -418,6 +446,8 @@
                                 simple_vote = TRUE,
                                 resolve_ties = FALSE,
                                 kernel_fun = function(x) 1/x,
+                                kNN_data = 5,
+                                kNN_cluster = NULL,
                                 seed = 1234,
                                 .parallel = FALSE, ...) {
 
@@ -430,6 +460,21 @@
     nfolds <- as.integer(nfolds)
 
     kNN <- as.integer(kNN)
+    kNN_data <- as.integer(kNN_data)
+
+    if(is.null(kNN_cluster)) {
+
+      if(x$clust_fun %in% c('som', 'supersom')) {
+
+        kNN_cluster <- kNN_data
+
+      } else {
+
+        kNN_cluster <- 1
+
+      }
+
+    }
 
     stopifnot(is.logical(simple_vote))
     stopifnot(is.logical(resolve_ties))
@@ -485,11 +530,14 @@
             resolve_ties = resolve_ties,
             kernel_fun = kernel_fun,
             distance_method = distance_names,
+            kNN_data = kNN_data,
+            kNN_cluster = kNN_cluster,
             seed = seed,
             .parallel = .parallel,
             k = nrow(ngroups(x)),
             hc_method = x$hc_method,
             clust_fun = x$clust_fun,
+            lambdas = x$lambdas,
             xdim = x$grid$xdim,
             ydim = x$grid$ydim,
             topo = x$grid$topo,
@@ -502,7 +550,7 @@
 
     ## function calls -------
 
-    if(x$clust_fun %in% c('hclust', 'som', 'supersom')) {
+    if(x$clust_fun %in% c('hclust', 'som', 'supersom', 'htk')) {
 
       cmm_args$clust_fun <- NULL
 
@@ -520,6 +568,7 @@
             clustering_fun = switch(x$clust_fun,
                                     hclust = hcluster,
                                     kmeans = kcluster,
+                                    htk = htk_cluster,
                                     pam = kcluster,
                                     dbscan = dbscan_cluster,
                                     som = som_cluster,
@@ -554,6 +603,8 @@
                                 simple_vote = TRUE,
                                 resolve_ties = FALSE,
                                 kernel_fun = function(x) 1/x,
+                                kNN_data = 5,
+                                kNN_cluster = NULL,
                                 seed = 1234,
                                 .parallel = FALSE, ...) {
 
@@ -566,6 +617,9 @@
     nfolds <- as.integer(nfolds)
 
     kNN <- as.integer(kNN)
+    kNN_data <- as.integer(kNN_data)
+
+    if(is.null(kNN_cluster)) kNN_cluster <- 1
 
     stopifnot(is.logical(simple_vote))
     stopifnot(is.logical(resolve_ties))
@@ -604,7 +658,6 @@
 
     }
 
-
     args <-
       list2(data = model.frame(x)$observation,
             nfolds = nfolds,
@@ -622,12 +675,15 @@
             node_clust_fun = switch(x$clust_analyses$node$clust_fun,
                                     hclust = hcluster,
                                     kmeans = kcluster,
+                                    htk = htk_cluster,
                                     pam = kcluster,
                                     dbscan = dbscan_cluster,
                                     som = som_cluster),
             kernel_fun = kernel_fun,
             simple_vote = simple_vote,
             resolve_ties = resolve_ties,
+            kNN_data = kNN_data,
+            kNN_cluster = kNN_cluster,
             seed = seed,
             .parallel = .parallel)
 

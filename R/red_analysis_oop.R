@@ -38,7 +38,7 @@
 
 # plotting ----
 
-#' Plot features of a red_analysis object.
+#' Plot features of a `red_analysis` object.
 #'
 #' @description
 #' Plots the component table, loadings table - in both cases the
@@ -47,13 +47,20 @@
 #' the components/dimensions.
 #'
 #' @details
-#' The loadings table plot is available only for the PCA `red_analysis` objects.
+#' The loadings table plot is available only for the PCA and factor
+#' analysis `red_analysis` objects.
+#' For `red_analysis` objects created with `clust_analysis` objects, scatter
+#' plots of the  scores/components table/layout can convey
+#' the cluster assignment information coded by the point or bar color
+#' (`label_clust = TRUE`).
 #'
-#' @param x a `red_analysis` object, created with \code{\link{reduce_data}}.
+#' @param x a `red_analysis` object, created with \code{\link{reduce_data}} or
+#' `components()` called for clustering analyses.
 #' @param type plot type:
 #'
-#' * 'component_tbl' or 'score' present the scores for particular observations
-#' in a scatter plot
+#' * 'component_tbl' or 'score' present the scores (layout) for particular
+#' observations in a scatter plot. If `label_clust = TRUE`, point color codes
+#' for the optional cluster assignment information.
 #'
 #' * 'loadings' plot the variable PCA loadings as a scatter plot.
 #'
@@ -64,6 +71,8 @@
 #'
 #' @param label_points logical, should the variable names be displayed in the
 #' plot? Valid only for the PCA loadings plot.
+#' @param label_clust logical, should the cluster assignment (if available) be
+#' coded be the point color?
 #' @param cust_theme a ggplot plot theme.
 #' @param segment_color color of the lines presented in the PCA loading plot.
 #' @param ... extra arguments passed to \code{\link{plot_point}}
@@ -81,6 +90,7 @@
                                          'scree',
                                          'neighborhood'),
                                 label_points = TRUE,
+                                label_clust = FALSE,
                                 cust_theme = ggplot2::theme_classic(),
                                 segment_color = 'steelblue', ...) {
 
@@ -231,6 +241,102 @@
     }
 
   }
+
+#' @rdname plot.red_analysis
+#' @export
+
+  plot.clust_red <- function(x,
+                             type = c('component_tbl',
+                                      'scores',
+                                      'loadings',
+                                      'scree',
+                                      'neighborhood'),
+                             label_points = TRUE,
+                             label_clust = TRUE,
+                             cust_theme = ggplot2::theme_classic(),
+                             segment_color = 'steelblue', ...) {
+
+    ## entry control is done be the superclass method -------
+
+    stopifnot(is.logical(label_clust))
+
+    type <- match.arg(type[1],
+                      c('component_tbl',
+                        'scores',
+                        'loadings',
+                        'scree',
+                        'neighborhood'))
+
+    ## calls for the superclass method for plots without cluster assignment ------
+
+    if(!label_clust) return(NextMethod())
+
+    if(!type %in% c('component_tbl', 'scores', 'neighborhood')) {
+
+      return(NextMethod())
+
+    }
+
+    ## numbers of observations and variables ------
+
+    plot_n <- nobs(x)
+
+    plot_tag <- paste0('\nObservations: n = ',
+                       plot_n$observations,
+                       '\nVariables: n = ',
+                       plot_n$variables)
+
+    ## scatter plots with the cluster assignment information ------
+
+    if(type %in% c('scores', 'component_tbl')) {
+
+      plot_data <- extract(x, 'scores')
+
+      if(!all(c('comp_1', 'comp_2') %in% names(plot_data))) {
+
+        stop(paste('Atempt to plot a 1-dimensional reduction analysis result.',
+                   'Adjust kdim?'),
+             call. = FALSE)
+
+      }
+
+      sdevs <- var(x)
+
+      if(x$red_fun == 'pca') {
+
+        ax_labs <- map2(c('PC1', 'PC2'),
+                        signif(sdevs$perc_var[1:2], 3),
+                        ~paste0(.x, ', ', .y, '%'))
+
+      } else {
+
+        ax_labs <- map2(c('Dim 1', 'Dim 2'),
+                        signif(sdevs$perc_var[1:2], 3),
+                        ~paste0(.x, ', ', .y, '%'))
+
+      }
+
+      point_plot <-
+        plot_point(data = plot_data,
+                   x_var = 'comp_1',
+                   y_var = 'comp_2',
+                   fill_var = 'clust_id',
+                   plot_title = switch(x$red_fun ,
+                                       pca = 'PCA',
+                                       mds = 'MDS',
+                                       umap = 'UMAP'),
+                   plot_tag = plot_tag,
+                   x_lab = ax_labs[[1]],
+                   y_lab = ax_labs[[2]],
+                   cust_theme = cust_theme,
+                   fill_lab = 'Cluster ID', ...)
+
+      return(point_plot)
+
+    }
+
+  }
+
 
 # prediction ------
 

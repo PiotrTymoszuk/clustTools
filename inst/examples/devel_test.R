@@ -175,7 +175,7 @@
                           clust_fun = 'kmeans',
                           k = 3)
 
-  test_pam <- kcluster(data = test_red$umap,
+  test_pam <- kcluster(data = test_data,
                        distance_method = 'manhattan',
                        clust_fun = 'pam',
                        k = 3)
@@ -275,7 +275,7 @@
 
   ## predictions for reduction analysis objects
 
-  test_pred_red <- predict(object = test_pam,
+  test_pred_red <- predict(object = test_hcl,
                            newdata = reduce_data(data = new_data,
                                                  distance_method = 'cosine',
                                                  kdim = 3,
@@ -284,7 +284,7 @@
 
   plot(test_pred_red, type = 'data')
 
-  plot(test_pam, type = 'data')
+  plot(test_hcl, type = 'data')
 
   test_pred_pca <- predict(object = test_dbscan,
                            newdata = reduce_data(data = new_data,
@@ -331,7 +331,7 @@
 # SOM combi clustering and its OOP -----
 
   test_combi <- combi_cluster(data = test_data,
-                              distance_som = 'canberra',
+                              distance_som = 'cosine',
                               xdim = 5,
                               ydim = 4,
                               topo = 'hexagonal',
@@ -440,6 +440,12 @@
 
   cross_distance(test_pam)
 
+  cross_distance(test_pam,
+                 predict(test_pam,
+                         newdata = new_data,
+                         type = 'propagation')) %>%
+    plot
+
   test_cross <- cross_distance(test_combi, test_new_combi)
 
   summary(cross_distance(test_combi, test_new_combi))
@@ -479,9 +485,6 @@
 
   plot(silhouette(test_combi), fill_by = 'sign')
   plot(silhouette(test_hcl), fill_by = 'neighbor')
-
-# Batch
-
 
 # Multi-layer SOM -------
 
@@ -534,8 +537,18 @@
   components(train_batch, kdim = 2, red_fun = 'umap', with = 'data')
 
   plot(train_batch, type = 'diagnostic')
-  plot(train_batch, type = 'components', with = 'data', kdim = 2, red_fun = 'mds')
-  plot(train_batch, type = 'components', with = 'umatrix', kdim = 2, red_fun = 'umap')
+
+  plot(train_batch,
+       type = 'components',
+       with = 'data',
+       kdim = 2,
+       red_fun = 'mds')
+
+  plot(train_batch,
+       type = 'components',
+       with = 'umatrix',
+       kdim = 2,
+       red_fun = 'umap')
 
   plot(train_batch, 'training')
 
@@ -568,7 +581,11 @@
 
   components(test_batch, kdim = 2, red_fun = 'umap', with = 'data')
 
-  plot(test_batch, type = 'components', with = 'distance', kdim = 2, red_fun = 'umap')
+  plot(test_batch,
+       type = 'components',
+       with = 'data',
+       kdim = 2,
+       red_fun = 'umap')
 
   test_homo_cross <- cross_distance(train_batch,
                                     .parallel = TRUE)
@@ -617,6 +634,8 @@
 
   silhouette(car_batch) %>%
     plot
+
+  components(car_batch, kdim = 2, with = 'data')
 
   plot(car_batch, 'heat_map')
 
@@ -699,6 +718,10 @@
   components(biopsy_umatrix_hcl, kdim = 2, red_fun = 'umap') %>% plot
   components(biopsy_umatrix_kmeans, kdim = 2, red_fun = 'mds') %>% plot
   components(biopsy_umatrix_pam, kdim = 2, red_fun = 'pca') %>% plot
+
+  plot(biopsy_umatrix_hcl,
+       type = 'components',
+       with = 'data')
 
   cross_distance(biopsy_umatrix_hcl) %>% plot('mean')
   cross_distance(biopsy_umatrix_kmeans) %>% plot('mean')
@@ -920,5 +943,114 @@
   te(test_som) %>% summary
 
   te(test_combi, type = 'final')
+
+# adaptive label propagation ------
+
+  test_adapt <- test_pam %>%
+    prediter(newdata = new_data,
+             select_stat = 'misclassification',
+             simple_vote = FALSE,
+             resolve_ties = TRUE,
+             .parallel = TRUE)
+
+  test_adapt %>%
+    extract
+
+  test_adapt %>%
+    summary
+
+  plot(test_adapt)
+
+# reduction analysis of the clustering data, training object -------
+
+  train_components <- test_pam %>%
+    components(kdim = 2, red_fun = 'umap', with = 'data')
+
+  train_components %>%
+    plot(type = 'component_tbl')
+
+  test_pam %>%
+    plot('components',
+         with = 'data')
+
+  new_pam <- predict(test_pam,
+                     newdata = new_data,
+                     type = 'propagation')
+
+  ## using the trained components
+
+  new_components <- new_pam %>%
+    components(kdim = 2,
+               red_fun = 'pca',
+               with = 'data',
+               train_object = train_components)
+
+  plot(new_components, type = 'scores')
+
+  plot(new_pam,
+       type = 'components',
+       with = 'data',
+       kdim = 2,
+       red_fun = 'umap')
+
+  plot(new_pam,
+       type = 'components',
+       with = 'data',
+       train_object = train_components)
+
+# reduction analysis of the clustering analysis, single layer SOM -------
+
+  train_components <- test_som %>%
+    components(kdim = 2,
+               red_fun = 'pca',
+               with = 'data')
+
+  plot(train_components)
+
+  new_som <- test_som %>%
+    predict(newdata = new_data,
+            type = 'som')
+
+  plot(new_som,
+       type = 'components',
+       kdim = 2,
+       with = 'data',
+       red_fun = 'pca')
+
+  plot(new_som,
+       type = 'components',
+       kdim = 2,
+       with = 'data',
+       train_object = train_components)
+
+# reduction analysis of the combi analysis -------
+
+  train_components <- test_combi %>%
+    components(kdim = 2,
+               with = 'data',
+               red_fun = 'umap')
+
+  test_new_combi %>%
+    components(with = 'data',
+               train_object = train_components)
+
+  new_components <- test_new_neuro_combi %>%
+    components(with = 'data',
+               train_object = train_components)
+
+  plot(train_components)
+  plot(new_components)
+
+  plot(test_combi,
+       type = 'components',
+       with = 'data',
+       kdim = 2,
+       red_fun = 'umap',
+       train_object = train_components)
+
+  plot(test_new_combi,
+       type = 'components',
+       with = 'data',
+       train_object = train_components)
 
 # END ------

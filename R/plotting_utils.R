@@ -382,6 +382,119 @@
 
   }
 
+# Diagnostic plots for HTK clustering -------
+
+#' Generate diagnostic plots for hard threshold KMEANS clustering.
+#'
+#' @description
+#' Creates the plot of within-cluster sum of squares and mean silhouette width
+#' for the varying cluster numbers.
+#'
+#' @details
+#' Corresponds to the output of \code{\link[factoextra]{fviz_nbclust}}.
+#' Intended for internal use.
+#'
+#' @return a list of two elements `wss` and `silhouette` storing `ggplot`
+#' objects with the plots of within-cluster sum of squares and silhouette widths.
+#'
+#' @param x a `clust_analysis` object.
+#' @param k a numeric vector with the k cluster numbers. If `NULL`, it
+#' will be determined automatically.
+#' @param plot_title title of the plots.
+#' @param plot_subtitle subtitle of the plots.
+#' @param plot_tag plot tag.
+#' @param cust_theme a custom `ggplot` theme.
+
+  plot_htk <- function(x,
+                       k = NULL,
+                       plot_title = NULL,
+                       plot_subtitle = NULL,
+                       plot_tag = NULL,
+                       cust_theme = ggplot2::theme_classic()) {
+
+    ## input control -----
+
+    stopifnot(is_clust_analysis(x))
+    stopifnot(x$clust_fun == 'htk')
+    stopifnot(inherits(cust_theme, 'theme'))
+
+    ## determining the cluster number and the range of k ------
+
+    clust_n <- nrow(ngroups(x))
+
+    k_vec <- c(1:clust_n,
+               (clust_n + 1):(clust_n + 6))
+
+    ## fitting the clustering objects -------
+
+    clust_calls <-
+      map(k_vec,
+          ~call2('htk_cluster',
+                 data = model.frame(x),
+                 k = .x,
+                 lambdas = x$lambdas,
+                 !!!compact(x$dots)))
+
+    ## safely evaluate, for high cluster numbers
+    ## an high lambda values, the algorithm may have no enough
+    ## unique data points to initialize the centers
+
+    clust_objects <- map(clust_calls, purrr::safely(eval))
+
+    errors <- map(clust_objects, ~.x$error)
+
+    correct <- map_lgl(errors, is.null)
+
+    clust_objects <- compact(map(clust_objects, ~.x$result))
+
+    ## stats --------
+
+    variances <- map(clust_objects, var)
+
+    variances <- map_dbl(variances, ~.x$total_wss)
+
+    ## no point at computing silhouette for a single cluster
+    ## its zero
+
+    sil_w <- map(clust_objects[-1], silhouette)
+
+    sil_w <- map_dbl(sil_w, ~mean(.x$sil_width))
+
+    variance <- NULL
+    silhouette <- NULL
+
+    stats <- tibble(k = k_vec[correct],
+                    variance = variances,
+                    silhouette = c(0, sil_w))
+
+    ## plots
+
+    plots <-
+      pmap(list(x = c('variance', 'silhouette'),
+                y = c('Total Within Sum of Square',
+                      'Average silhouette width')),
+           function(x, y) ggplot(stats,
+                                 aes(x = k,
+                                     y = .data[[x]])) +
+             ggplot2::geom_path(color = 'steelblue') +
+             ggplot2::geom_point(shape = 16,
+                                 size = 2,
+                                 color = 'steelblue') +
+             ggplot2::geom_vline(xintercept = clust_n,
+                                 linetype = 'dashed',
+                                 color = 'coral3') +
+             ggplot2::scale_x_continuous(breaks = k_vec) +
+             cust_theme +
+             ggplot2::labs(title = plot_title,
+                           subtitle = plot_subtitle,
+                           tag = plot_tag,
+                           y = y,
+                           x = 'Number of clusters k'))
+
+    set_names(plots, c('wss', 'silhouette'))
+
+  }
+
 # General plotting functions -------
 
 #' Generate a custom scatter ggplot.

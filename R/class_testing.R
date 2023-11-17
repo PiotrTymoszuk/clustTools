@@ -5,7 +5,7 @@
 #' @description
 #' Tests if the object is an instance of the `red_analysis`, `clust_analysis`,
 #' `combi_analysis`, `importance`, `cross_dist`, `sil_extra`, `min_analysis`,
-#' `umatrix_analysis`, `cluster_cv` or `knb` class.
+#' `umatrix_analysis`, `cluster_cv`, `knb` or `tuner` class.
 #'
 #' @return a logical value.
 #'
@@ -59,5 +59,10 @@
 #' @export
 
   is_knb <- function(x) inherits(x, 'knb')
+
+#' @rdname is_clust_analysis
+#' @export
+
+  is_tuner <- function(x) inherits(x, 'tuner')
 
 # END ------

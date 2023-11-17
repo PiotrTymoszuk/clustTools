@@ -18,7 +18,9 @@
 #' @param ... extra arguments, currently none.
 #'
 #' @return  a data frame with numeric statistics for the whole clustering
-#' structure (`clust_id` = 'global') and particular clusters.
+#' structure (`clust_id` = 'global') and particular clusters (mean, SD, median,
+#' interquartile range, 95% percentile range, range, number and fraction of
+#' potentially misclassified observations with negative silhouette widths).
 #'
 #' @export summary.sil_extra
 #' @export
@@ -77,7 +79,7 @@
     neg <- map2_dfr(neg, names(neg),
                     ~mutate(.x,
                             clust_id = .y,
-                            perc_negative = 100 * n_negative/n))
+                            frac_misclassified = n_negative/n))
 
     stats <- left_join(neg, stats, by = 'clust_id')
 
@@ -158,7 +160,7 @@
     sil_width <- NULL
     sil_sign <- NULL
     n <- NULL
-    perc_negative <- NULL
+    frac_misclassified <- NULL
     clust_id <- NULL
     observation <- NULL
     neighbor_id <- NULL
@@ -190,8 +192,8 @@
       stats <-
         mutate(summary(x),
                plot_lab = paste0('total: n = ', n,
-                                 '\nnegative: ',
-                                 signif(perc_negative, signif_digits), '%',
+                                 '\nnegative fraction = ',
+                                 signif(frac_misclassified, signif_digits),
                                  '\navg(s) = ', signif(mean, signif_digits)),
                plot_lab = paste(clust_id, plot_lab, sep = '\n'))
 

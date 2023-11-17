@@ -105,6 +105,7 @@
     clust_algorithm <- switch(x$clust_fun,
                               hclust = paste(',', x$hc_method, 'method'),
                               kmeans = '',
+                              htk = '',
                               pam = '',
                               som = ', single-layer',
                               supersom = ', multi-layer',
@@ -113,6 +114,7 @@
     clust_method <- switch(x$clust_fun,
                            hclust = 'Hierarchical clustering',
                            kmeans = 'Kmeans clustering',
+                           htk = 'HT-KMEANS clustering',
                            pam = 'PAM clustering',
                            som = 'SOM clustering',
                            supersom = 'SOM clustering',
@@ -137,7 +139,7 @@
 
     if(type == 'data' & x$clust_fun %in% c('supersom', 'supersom_prediction')) {
 
-      warning("The 'data' option is not available for mMulti-layer SOM.",
+      warning("The 'data' option is not available for multi-layer SOM.",
               call. = FALSE)
 
       return(NULL)
@@ -151,8 +153,6 @@
       plot_list <- list()
 
       if(x$clust_fun %in% c('hclust', 'kmeans', 'pam')) {
-
-        plot_title <- 'Optimal cluster number'
 
         k <- length(unique(x$clust_assignment$clust_id))
 
@@ -170,7 +170,7 @@
                                   diss = dist(x, 'distance'),
                                   k = k,
                                   !!!clust_args,
-                                  plot_title = plot_title,
+                                  plot_title = 'Optimal cluster number',
                                   plot_subtitle = plot_subtitle,
                                   plot_tag = plot_tag,
                                   cust_theme = cust_theme))
@@ -207,6 +207,14 @@
 
         plot_list <- plot_som(x$clust_obj)
 
+      } else if(x$clust_fun == 'htk') {
+
+        plot_list <- plot_htk(x = x,
+                              plot_title = 'Optimal cluster number',
+                              plot_subtitle = plot_subtitle,
+                              plot_tag = plot_tag,
+                              cust_theme = cust_theme)
+
       } else {
 
         warning('No training plots available for cluster predictions',
@@ -230,113 +238,28 @@
 
       if(is_red_analysis(red_results)) {
 
-        ## providing a 1d PCA, MDS or UMAP should throw an error
-
-        if(!all(c('comp_1', 'comp_2') %in% names(red_results$component_tbl))) {
-
-          stop('Atempt to plot a 1-dimensional reduction analysis result. Adjust kdim?',
-               call. = FALSE)
-
-        }
-
-        sdevs <- var(red_results)
-
-        if(red_results$red_fun == 'pca') {
-
-          ax_labs <- map2(c('PC1', 'PC2'),
-                          signif(sdevs$perc_var[1:2], 3),
-                          ~paste0(.x, ', ', .y, '%'))
-
-        } else {
-
-          ax_labs <- map2(c('Dim 1', 'Dim 2'),
-                          signif(sdevs$perc_var[1:2], 3),
-                          ~paste0(.x, ', ', .y, '%'))
-
-        }
-
-        point_plot <-
-          plot_point(data = red_results$component_tbl,
-                     x_var = 'comp_1',
-                     y_var = 'comp_2',
-                     fill_var = 'clust_id',
-                     plot_title = switch(red_results$red_fun ,
-                                         pca = 'PCA',
-                                         mds = 'MDS',
-                                         umap = 'UMAP'),
-                     plot_subtitle = plot_subtitle,
-                     plot_tag = plot_tag,
-                     x_lab = ax_labs[[1]],
-                     y_lab = ax_labs[[2]],
-                     cust_theme = cust_theme,
-                     jitter_height = jitter_height,
-                     jitter_width = jitter_width,
-                     fill_lab = 'Cluster ID',
-                     point_alpha = point_alpha)
+        point_plot <- plot.clust_red(red_results,
+                                     type = 'score',
+                                     label_clust = TRUE,
+                                     cust_theme = cust_theme,
+                                     plot_subtitle = plot_subtitle,
+                                     jitter_height = jitter_height,
+                                     jitter_width = jitter_width,
+                                     point_alpha = point_alpha)
 
         return(point_plot)
 
       } else {
 
-        plot_data <- map(red_results, ~.x$component_tbl)
-
-        name_check <-
-          map_lgl(plot_data,
-                  function(x) all(c('comp_1', 'comp_2') %in% names(x)))
-
-        if(any(!name_check)) {
-
-          stop('Atempt to plot a 1-dimensional reduction analysis result. Adjust kdim?',
-               call. = FALSE)
-
-        }
-
-        sdev <- map(red_results, var)
-
-        if(red_results[[1]]$red_fun == 'pca') {
-
-          ax_labs <-
-            map(sdev,
-                function(layer) map2(c('PC1', 'PC2'),
-                                     signif(layer$perc_var[1:2], 3),
-                                     ~paste0(.x, ', ', .y, '%')))
-
-        } else {
-
-          ax_labs <-
-            map(sdev,
-                function(layer) map2(c('Dim1', 'Dim2'),
-                                     signif(layer$perc_var[1:2], 3),
-                                     ~paste0(.x, ', ', .y, '%')))
-
-        }
-
-        ax_labs <- purrr::transpose(ax_labs)
-
-        n_numbers <- map(red_results, nobs)
-
-        plot_tags <- map(n_numbers,
-                         ~paste('Observations: n = ', .x[['observations']],
-                                '\nVariables: n = ', .x[['variables']]))
-
         point_plots <-
-          pmap(list(data = plot_data,
-                    x_lab = ax_labs[[1]],
-                    y_lab = ax_labs[[2]],
-                    plot_tag = plot_tags),
-               plot_point,
-               x_var = 'comp_1',
-               y_var = 'comp_2',
-               fill_var = 'clust_id',
-               plot_title = switch(red_results[[1]]$red_fun,
-                                   pca = 'PCA',
-                                   mds = 'MDS',
-                                   umap = 'UMAP'),
-               plot_subtitle = plot_subtitle,
+          pmap(list(x = red_results),
+               plot.clust_red,
+               type = 'score',
+               label_clust = TRUE,
                cust_theme = cust_theme,
+               plot_subtitle = plot_subtitle,
                jitter_height = jitter_height,
                jitter_width = jitter_width,
-               fill_lab = 'Cluster ID',
                point_alpha = point_alpha)
 
         return(point_plots)
@@ -471,6 +394,80 @@
       return(point_plot)
 
     }
+
+  }
+
+# Summary quality stats -------
+
+#' Quality control of clustering solutions.
+#'
+#' @description
+#' Computes basic global statistics of quality of a clustering analysis object.
+#'
+#' @details
+#' The statistics retrieved by the `summary()` method are:
+#'
+#' * _silhouette width_ (`sil_width`)
+#'
+#' * _fraction of potentially misclassified observations_ with negative
+#' silhouette widths (`frac_misclassified`)
+#'
+#' * _fraction of explained clustering variance_ expressed as the ratio of total
+#' between sum of squares to total sum of squares (`frac_var`)
+#'
+#' * _fraction of preserved nearest neighbors_ (`frac_np`)
+#'
+#' The statistics are computed with \code{\link{silhouette}}, \code{\link{var}},
+#' and \code{\link{np}} methods for the entire clustering structure and not
+#' for particular clusters.
+#'
+#' @references
+#' Rousseeuw PJ. Silhouettes: A graphical aid to the interpretation and
+#' validation of cluster analysis. J Comput Appl Math (1987) 20:53–65.
+#' doi:10.1016/0377-0427(87)90125-7
+#'
+#' @references
+#' Venna J, Kaski S. Neighborhood preservation in nonlinear projection methods:
+#' An experimental study. Lect Notes Comput Sci (including Subser Lect Notes
+#' Artif Intell Lect Notes Bioinformatics) (2001) 2130:485–491.
+#' doi:10.1007/3-540-44668-0_68
+#'
+#' @return a data frame with columns characterized in Details.
+#'
+#' @param object a `clust_analysis` or `combi_analysis` object.
+#' @param ... extra arguments passed to \code{\link{np}}.
+#'
+#' @export summary.clust_analysis
+#' @export
+
+  summary.clust_analysis <- function(object, ...) {
+
+    stopifnot(is_clust_analysis(object) | is_combi_analysis(object))
+
+    sil_res <- try(silhouette(object), silent = TRUE)
+
+    variance <- try(var(object), silent = TRUE)
+
+    neighbor_preservation <- try(np(object, type = 'final', ...), silent = TRUE)
+
+    stats <-
+      tibble(sil_width = tryCatch(mean(sil_res$sil_width, na.rm = TRUE),
+                                  error = function(e) NA),
+             frac_misclassified = tryCatch(sum(sil_res$sil_width < 0)/nrow(sil_res),
+                                           error = function(e) NA),
+             frac_var = tryCatch(variance$frac_var,
+                                 error = function(e) NA),
+             frac_np = tryCatch(mean(neighbor_preservation$frac_np, na.rm = TRUE),
+                                error = function(e) NA))
+
+    if(any(map_lgl(stats, is.na))) {
+
+      warning('At least one statistic could not be calculated.',
+              call. = FALSE)
+
+    }
+
+    stats
 
   }
 

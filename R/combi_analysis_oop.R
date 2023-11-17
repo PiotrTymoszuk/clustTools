@@ -122,6 +122,10 @@
 
       obs_red <- components(x$clust_analyses$observation, ...)
 
+      ## handling bad requests, e.g. training objects for distance reductions
+
+      if(is.null(obs_red)) return(NULL)
+
       score_tbl <- select(obs_red$component_tbl,
                           observation,
                           dplyr::starts_with('comp'))
@@ -275,6 +279,18 @@
          jitter_width = jitter_width,
          fill_lab = 'Cluster ID',
          point_alpha = point_alpha)
+
+  }
+
+# Summary ------
+
+#' @rdname summary.clust_analysis
+#' @export summary.combi_analysis
+#' @export
+
+  summary.combi_analysis <- function(object, ...) {
+
+    summary.clust_analysis(object, ...)
 
   }
 

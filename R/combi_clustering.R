@@ -156,12 +156,19 @@
 
     dots <- list2(...)
 
+    ## special handling of lambda vectors for regularized
+    ## cluster functions of the nodes
+
+    dots$lambdas <- NULL
+
     if(!is.null(som_args)) {
 
       dots <- c(dots,
                 list(som_args = som_args))
 
     }
+
+    dots <- compact(dots)
 
     combi_analysis(list(clust_analyses = list(observation = som_clust,
                                               node = node_clust),
