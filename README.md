@@ -1638,6 +1638,332 @@ Those results suggest cylinder number as by far the most influential clustering 
   
 </details>
 
+### Regularized clustering
+
+<details>
+
+At the moment, the `clustTools` package implements one algorithm of regularized unsupervised clustering, __the Hard-Threshold KMEANS or HTK clustering__, introduced recently by Raymaekers and Zamar. Here, I'll demonstrate its usage and potential advantages at dealing with sparse data with the `wines` data set provided in the `MASS` package.
+
+```r
+
+  ## required libraries and de-masking of some functions
+
+  library(kohonen)
+
+  library(clustTools)
+  library(tidyverse)
+  library(clusterHD)
+  library(caret)
+  library(somKernels)
+
+  extract <- clustTools::extract
+  map <- purrr::map
+  library(patchwork)
+
+```
+
+As before, we'll start with selection of variables with a threshold of the mean-to-variance ratio statistic, normalize the clustering features and create the training and test subsets. For simplicity, I'm skippng an analysis of distribution of clustering variables.
+
+```r
+  ## the wines dataset pre-processing: elimination of invariant features
+  ## (low variance to mean ratio) and mean centering
+
+  data("wines")
+
+  my_wines <- wines %>%
+    as.data.frame %>%
+    mutate(ID = paste0('wine_', 1:nrow(.))) %>%
+    column_to_rownames('ID')
+
+  distr_stats <- my_wines %>%
+    map_dfr(~tibble(variance = var(.x),
+                    mean = mean(.x),
+                    var_mean_ratio = var(.x)/mean(.x))) %>%
+    mutate(variable = names(my_wines)) %>%
+    relocate(variable)
+
+  top_variant_features <- distr_stats %>%
+    filter(var_mean_ratio > 0.1) %>%
+    .$variable
+
+  my_wines <- my_wines %>%
+    select(all_of(top_variant_features)) %>%
+    center_data('mean')
+
+  ## appending the parental data frame with wine classification
+  ## it will be used for the final validation of the results
+
+  my_wines <- my_wines %>%
+    mutate(vintage = vintages)
+
+  ## training: 100 randomly chosen observations
+  ## the rest used for validation
+  ## created with caret's createDataPartition() to keep
+  ## the vintage distribution
+
+  set.seed(12345)
+
+  train_ids <- createDataPartition(my_wines$vintage, p = 100/177)[[1]]
+
+  wine_lst <-
+    list(train = my_wines[train_ids, ],
+         test = my_wines[-train_ids, ]) %>%
+    map(select, -vintage)
+```
+
+Next, we are going to train clustering structures with the canonical KMEANS and the regularized HTK algorithms. Note: for the KMEANS clustering structure, squared Euclidean distance is used, the same as implemented in the HTK algorithm by default. By this means, we can compare the two clustering procedures in a head-to-head manner. For the HTK clustering structure, choice of the penalty parameter `lambda` is of critical importance. Cross-validation tuning popularized by supervised machine learning is a handy solution to this problem. By calling `tune_htk()` with the argument specified below, we're looking for the optimal `lambda` for a k = 3 cluster solution with the maximum out-of-fold silhouette width in 10-fold cross-validation. The argument `kNN = 11` specifies the number of nearest neighbors for the nearest neighbor classifier used to assign CV fold observations to the clusters.
+
+```r
+
+  train_clusters <- list()
+
+  ## canonical KMEANS
+
+  train_clusters$kmeans <- kcluster(data = wine_lst$train,
+                                    distance_method = 'squared_euclidean',
+                                    clust_fun = 'kmeans',
+                                    k = 3)
+
+  ## regularized KMEANS, finding lambda by CV-tuning
+
+  train_tune <- tune_htk(data = wine_lst$train,
+                         k = 3,
+                         lambdas = seq(0, 1, by = 0.025),
+                         select_stat = 'silhouette',
+                         type = 'cv',
+                         nfolds = 10,
+                         kNN = 11,
+                         .parallel = TRUE)
+
+```
+By calling `summary()` for the tuning object, the full results of tuning can be accessed:
+
+```r
+>   summary(train_tune)
+# A tibble: 41 × 7
+   lambda object_id sil_width frac_misclassified frac_var frac_np n_active_vars
+    <dbl> <chr>         <dbl>              <dbl>    <dbl>   <dbl>         <dbl>
+ 1  0     obj_1         0.382              0.151    0.667   0.453             9
+ 2  0.025 obj_2         0.382              0.151    0.667   0.453             9
+ 3  0.05  obj_3         0.382              0.151    0.667   0.453             9
+ 4  0.075 obj_4         0.382              0.151    0.667   0.453             9
+ 5  0.1   obj_5         0.382              0.151    0.667   0.453             9
+ 6  0.125 obj_6         0.382              0.151    0.667   0.453             9
+ 7  0.15  obj_7         0.382              0.151    0.667   0.453             9
+ 8  0.175 obj_8         0.382              0.151    0.667   0.453             8
+ 9  0.2   obj_9         0.382              0.151    0.667   0.453             8
+10  0.225 obj_10        0.382              0.151    0.667   0.453             8
+```
+Quality control graphics such as clusetr performance statistics for subsequent lambda values and regularization paths can be retrieved by `plot()`. A short visual analysis of the output suggests that the HTK algorithm works best for `lambda = 0.18`, which results in elimination of one variable: the `ash alkalinity`:
+
+```r
+>   plot(train_tune)
+$statistics
+
+$regularization
+```
+
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/3c6c5fbd-119b-44b6-b89f-8d1087dadeaf)
+
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/7ff210e5-51b0-491f-b284-aff40755e8be)
+
+Next, we can get the best clustering structure wrapped in a `clust_analysis` object by calling `extract()` for the tuning result. I'm also renaming the clusters by their predominant vintage checked elswhere:
+
+```r
+
+  train_clusters$htk <- extract(train_tune, 'analysis')
+
+  ## renaming the clusters after their predominant vintages (checked elsewhere)
+
+  train_clusters$kmeans <- train_clusters$kmeans %>%
+    rename(c('2' = 'Barbera',
+             '1' = 'Barolo',
+             '3' = 'Grignolino'))
+
+  train_clusters$htk <- train_clusters$htk %>%
+    rename(c('3' = 'Barbera',
+             '1' = 'Barolo',
+             '2' = 'Grignolino'))
+
+```
+As usual, performance statistics such as mean silhouette width, fraction of candidate misclassified observations (i.e. observations with negative silhouette width), fraction of explained clustering variance and nearest neighborhood preservation is returned by `summary()` for the KMEANS and the optimal HTK clustering solution in the training data portion. Of note, the HTK solution is characterized by better cluster separation and supreme neighborhood preservation. In turn, the explained clustering variance is worse, but we must keep in mind, that the HTK algorithm works with one variable less as compared with the canonical KMEANS:
+
+```r
+>   train_clusters %>%
++     map(summary)
+$kmeans
+# A tibble: 1 × 4
+  sil_width frac_misclassified frac_var frac_np
+      <dbl>              <dbl>    <dbl>   <dbl>
+1     0.399             0.0686    0.626   0.904
+
+$htk
+# A tibble: 1 × 4
+  sil_width frac_misclassified frac_var frac_np
+      <dbl>              <dbl>    <dbl>   <dbl>
+1     0.440             0.0196    0.572   0.922
+
+```
+
+We can verify it in the test portion of the wine data set. Prediction of the cluster assignment in the test subset is done by a nearest neighbor classifier which works in the same manner for the classical KMEANS and the HTK clustering:
+
+```r
+  test_clusters <- train_clusters %>%
+    map(predict.clust_analysis,
+        newdata = wine_lst$test,
+        type = 'propagation',
+        kNN = 11,
+        active_variables = TRUE)
+```
+Also in the test subset, the HTK clustering solution beats the KMEANS algorithm in terms of cluster seperation and neighborhood preservation:
+
+```r
+>   test_clusters %>%
++     map(summary)
+$kmeans
+# A tibble: 1 × 4
+  sil_width frac_misclassified frac_var frac_np
+      <dbl>              <dbl>    <dbl>   <dbl>
+1     0.391              0.107    0.604    0.84
+
+$htk
+# A tibble: 1 × 4
+  sil_width frac_misclassified frac_var frac_np
+      <dbl>              <dbl>    <dbl>   <dbl>
+1     0.459             0.0667    0.623   0.877
+```
+
+The classification performance of the HTK algorithm can be visualized in an even more impressive manner in UMAP plots. For sake of clarity, we're going to plot the cluster assignment with the same UMAP layout, which is accomplished by providind a common 'training' UMAP structure:
+
+
+```r
+
+  ## common UMAP layout
+
+  umap_train <- train_clusters[[1]] %>%
+    components(with = 'data',
+               distance_method = 'cosine',
+               kdim = 2,
+               red_fun = 'umap',
+               random_state = 12345)
+  
+  ## plotting the cluster assignment on the common UMAP layout
+
+  kmeans_plots <- c(train_clusters,
+                    test_clusters) %>%
+    set_names(c('train_kmeans', 'train_htk',
+                'test_kmeans', 'test_htk')) %>%
+    map(plot,
+        type = 'components',
+        with = 'data',
+        red_fun = 'umap',
+        train_object = umap_train)
+  
+  ## and adjustments of plot elements using the ggplot interface
+
+  kmeans_plots <-
+    map2(kmeans_plots,
+         c('Wines, training, KMEANS',
+           'Wines, training, HTKmeans',
+           'Wines, test, KMEANS',
+           'Wines, test, HTKmeans'),
+         ~.x +
+           labs(title = .y) +
+           theme(plot.tag = element_blank(),
+                 legend.position = 'none'))
+
+```
+```r
+>   kmeans_plots$train_kmeans +
++     kmeans_plots$test_kmeans +
++     kmeans_plots$train_htk +
++     kmeans_plots$test_htk
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/8e3f2bfa-4932-442e-b4cb-60f41e45f5a2)
+
+Finally, let's compare the wine data set clusters with the observed vintage with a formal ROC analysis. This analysis shows clearly, that the HTK algorithm predicts the vintage with grater sensitivity, specificity and concordance (Cohen's $\kappa$) that the KMEANS solution:
+
+```r
+
+vintage_assignment <- my_wines %>%
+    rownames_to_column('observation') %>%
+    select(observation, vintage)
+
+  ## assignment of samples to the clusters and vintages
+
+  kmeans_assignment <- list(train = train_clusters$kmeans,
+                            test = test_clusters$kmeans) %>%
+    map(extract, 'assignment') %>%
+    map(left_join, vintage_assignment, by = 'observation')
+
+  htk_assignment <- list(train = train_clusters$htk,
+                         test = test_clusters$htk) %>%
+    map(extract, 'assignment') %>%
+    map(left_join, vintage_assignment, by = 'observation')
+
+  ## frequencies of vintages in the clusters
+
+  kmeans_wine_counts <- kmeans_assignment %>%
+    map(count, clust_id, vintage)
+
+  htk_wine_counts <- htk_assignment %>%
+    map(count, clust_id, vintage)
+
+  ## receiver-operating characteristic
+
+  kmeans_roc <- kmeans_assignment %>%
+    map(transmute,
+        obs = vintage,
+        pred = clust_id) %>%
+    map(as.data.frame) %>%
+    map(multiClassSummary,
+        lev = c('Barbera', 'Barolo', 'Grignolino'))
+
+  htk_roc <- htk_assignment %>%
+    map(transmute,
+        obs = vintage,
+        pred = clust_id) %>%
+    map(as.data.frame) %>%
+    map(multiClassSummary,
+        lev = c('Barbera', 'Barolo', 'Grignolino'))
+
+## and a common ROC summary used later for plotting
+
+  roc_summary <- c(kmeans_roc, htk_roc) %>%
+    reduce(rbind) %>%
+    as_tibble %>%
+    mutate(dataset = rep(c('training', 'test'), 2),
+           algorithm = c(rep('KMEANS', 2),
+                         rep('HTKmeans', 2)))
+
+```
+```r
+
+ roc_summary %>%
+    pivot_longer(cols = c(Accuracy,
+                          Kappa,
+                          Mean_Sensitivity,
+                          Mean_Specificity),
+                 names_to = 'statistic',
+                 values_to = 'value') %>%
+    ggplot(aes(x = value,
+               y = algorithm,
+               fill = dataset)) +
+    geom_bar(stat = 'identity',
+             color = 'black',
+             position = position_dodge(0.9)) +
+    facet_wrap(facets = vars(statistic),
+               scales = 'free') +
+    labs(title = 'Vintage prediction')
+
+
+```
+![image](https://github.com/PiotrTymoszuk/clustTools/assets/80723424/2524ec0c-cca9-4a87-8d32-f5d5057eb32f)
+
+A quick look at the confusion matrix, which is left to an interested user, indicates that the better performance of the HTK algoritm manifests prmarily by almost perfect identification of the Grignolino wines, i.e. the vintage which is recognized by KMEANS with pretty low accuracy.
+  
+</details>
+
 ## References
 
 1. Murtagh F, Contreras P. Algorithms for hierarchical clustering: An overview. Wiley Interdiscip Rev Data Min Knowl Discov (2012) 2:86–97. doi:10.1002/widm.53
@@ -1657,3 +1983,4 @@ Those results suggest cylinder number as by far the most influential clustering 
 15. Kohonen T. Self-Organizing Maps. Berlin, Heidelberg: Springer Berlin Heidelberg (1995). doi:10.1007/978-3-642-97610-0
 16. Vesanto J, Alhoniemi E. Clustering of the self-organizing map. IEEE Trans Neural Networks (2000) 11:586–600. doi:10.1109/72.846731
 17. Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0. J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
+18. Raymaekers J, Zamar RH. Regularized K-means Through Hard-Thresholding. J Mach Learn Res (2022) 23:1–48. Available at: http://jmlr.org/papers/v23/21-0052.html [Accessed November 15, 2023]
