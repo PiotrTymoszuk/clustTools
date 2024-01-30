@@ -754,9 +754,15 @@
 
     ## plotting data ---------
 
-    data <- switch(class(x_object),
-                   clust_analysis = model.frame(x_object),
-                   combi_analysis = model.frame(x_object)$observation)
+    if(is_combi_analysis(x_object)) {
+
+      data <- model.frame(x_object)$observation
+
+    } else {
+
+      data <- model.frame(x_object)
+
+    }
 
     data <- as_tibble(data)
 

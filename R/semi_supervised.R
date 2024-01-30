@@ -23,6 +23,12 @@
 #' @param object a `clust_analysis` or a `combi_analysis` object
 #' @param newdata a numeric data frame, matrix or a `red_analysis` object.
 #' If NULL (default), the bare cluster assignment table is returned.
+#' @param variables an optional vector with names of variables to be used for
+#' the cluster assignment prediction. If `NULL` (default), all variables will
+#' be used.
+#' @param active_variables logical, should the prediction be done with active
+#' variables only? refers only to objects created with hard threshold
+#' regularized algorithms.
 #' @param distance_method a distance metric, by default it is retrieved from
 #' the input `clust_analysis` or `combi_analysis` object. For the later, the
 #' distance used for observation clustering is used in the projection.
@@ -43,6 +49,8 @@
 
   propagate <- function(object,
                         newdata = NULL,
+                        variables = NULL,
+                        active_variables = FALSE,
                         distance_method = NULL,
                         kNN = 5,
                         simple_vote = TRUE,
@@ -112,6 +120,7 @@
     stopifnot(is.logical(simple_vote))
     stopifnot(is.logical(detailed))
     stopifnot(is.function(kernel_fun))
+    stopifnot(is.logical(active_variables))
 
     clust_id <- NULL
 
@@ -128,7 +137,44 @@
 
     }
 
-    if(ncol(train_set) != ncol(newdata)) {
+    if(active_variables) {
+
+      if(is_clust_analysis(object)) {
+
+        variables <- object$active_variables
+
+      } else {
+
+        variables <- object$clust_analyses$node$active_variables
+
+      }
+
+    }
+
+    if(!is.null(variables)) {
+
+      stopifnot(is.character(variables))
+
+      if(any(!variables %in% colnames(train_set)) |
+         any(!variables %in% colnames(newdata))) {
+
+        stop(paste("Some features specified by the 'variables' vector",
+                   "are missing from the data."),
+             call. = FALSE)
+
+      }
+
+      train_set <- train_set[, variables, drop = FALSE]
+
+      test_set <- newdata[, variables, drop = FALSE]
+
+    } else {
+
+      test_set <- newdata
+
+    }
+
+    if(ncol(train_set) != ncol(test_set)) {
 
       stop(paste('The numbers of columns in newdata and the data used',
                  'for cluster development must be equal.'),
@@ -136,7 +182,7 @@
 
     }
 
-    if(any(!colnames(train_set) %in% colnames(newdata))) {
+    if(any(!colnames(train_set) %in% colnames(test_set))) {
 
       stop('Clustering features missing from the newdata.', call. = FALSE)
 
@@ -161,14 +207,14 @@
 
     ## constructing the mixed test-train matrix and calculating a distance object ---------
 
-    if(is.null(rownames(newdata))) {
+    if(is.null(rownames(test_set))) {
 
-      rownames(newdata) <- paste0('test_', 1:nrow(train_set))
+      rownames(test_set) <- paste0('test_', 1:nrow(train_set))
 
     }
 
     mix_set <- rbind(train_set,
-                     as.matrix(newdata[, colnames(train_set)]))
+                     as.matrix(test_set[, colnames(train_set)]))
 
     mix_diss <- calculate_dist(data = mix_set,
                                method = distance_method)
@@ -178,8 +224,8 @@
     knn_dists <- dbscan::kNN(as.dist(mix_diss),
                              k = nrow(mix_diss) - 1)
 
-    knn_test <- list(dist = knn_dists$dist[rownames(newdata), ],
-                     id = knn_dists$id[rownames(newdata), ])
+    knn_test <- list(dist = knn_dists$dist[rownames(test_set), ],
+                     id = knn_dists$id[rownames(test_set), ])
 
     knn_test$annot_id <- matrix(rownames(mix_diss)[knn_test$id],
                                 ncol = nrow(mix_diss) - 1)
@@ -238,7 +284,7 @@
 
     clust_out <-
       clust_analysis(list(data = quo(!!model_frame),
-                          dist_mtx = as.matrix(mix_diss)[rownames(newdata), rownames(newdata)],
+                          dist_mtx = calculate_dist(newdata, distance_method),
                           dist_method = distance_method,
                           clust_fun = 'prediction',
                           clust_obj = NULL,
@@ -560,9 +606,24 @@
 #'
 #' @details For the implementation details of the kNN label propagation
 #' algorithm, see: \code{\link{propagate}}.
+#'
 #' The default distance metric is extracted from the `clust_analysis` object.
 #' For `combi_analysis` objects, the default distance metric is the distance
 #' between observations (not nodes!).
+#' In case of clustering analyses performed with hard threshold regularization
+#' algorithms (currently only \code{\link{htk_cluster}}), the prediction by
+#' the kNN classifier is done by default by using all available variables.
+#' However, by setting `active_variables = TRUE`, the user may switch to
+#' prediction of the cluster assignment only with variables contributing to
+#' development of the clustering structure. See the paper by Raymaekers and
+#' Zamar for rationale of the hard thresholding regularization and active
+#' variable selection.
+#'
+#' Currently, it is not possible to perform semi-supervised clustering for
+#' clustering analysis objects generated with user-provided dissimilarity
+#' objects (subclass `min_analysis` of `clust_analysis`). In such cases, `NULL`
+#' is returned with a warning.
+#'
 #' For the kNN propagation, the cluster projection is done on the top level,
 #' i.e. takes into account the final assignment of the observations to the
 #' clusters and ignoring the SOM nodes.
@@ -582,10 +643,7 @@
 #' with a warning.
 #' The SOM method is also the only method applicable to analyses employing
 #' multi-layer SOM.
-#' Currently, it is not possible to perform semi-supervised clustering for
-#' clustering analysis objects generated with user-provided dissimilarity
-#' objects (subclass `min_analysis` of `clust_analysis`). In such cases, `NULL`
-#' is returned with a warning.
+#'
 #'
 #' @references
 #' Leng M, Wang J, Cheng J, Zhou H, Chen X. Adaptive
@@ -597,6 +655,10 @@
 #' @references
 #' Wehrens R, Kruisselbrink J. Flexible self-organizing maps in kohonen 3.0.
 #' J Stat Softw (2018) 87:1–18. doi:10.18637/jss.v087.i07
+#' @references
+#' Raymaekers J, Zamar RH. Regularized K-means Through Hard-Thresholding.
+#' J Mach Learn Res (2022) 23:1–48. Available at:
+#' http://jmlr.org/papers/v23/21-0052.html
 #'
 #' @param object an object.
 #' @param newdata a numeric data frame, matrix or a red_analysis object.
@@ -605,6 +667,8 @@
 #' ('class', default), kNN label propagation ('propagation') or prediction
 #' via SOM neuronal network ('som'). The SOM prediction method is the sole
 #' prediction algorithm implemented for multi-layer SOM.
+#' @param active_variables logical, should only active variables be used for the
+#' cluster assignment prediction? Relevant only for objects created with hard threshold regularization algorithms and ignored otherwise  See Details.
 #'
 #' @param ... extra arguments passed to \code{\link{propagate}}.
 #'
@@ -615,7 +679,9 @@
 
   predict.clust_analysis <- function(object,
                                      newdata = NULL,
-                                     type = c('class', 'propagation', 'som'), ...) {
+                                     type = c('class', 'propagation', 'som'),
+                                     active_variables = FALSE,
+                                     ...) {
 
     ## entry control ---------
 
@@ -660,6 +726,8 @@
       purrr::walk(newdata, check_numeric)
 
     }
+
+    stopifnot(is.logical(active_variables))
 
     ## projections -----------
 
@@ -727,7 +795,8 @@
     if(type == 'propagation') {
 
       return(propagate(object = object,
-                       newdata = newdata, ...))
+                       newdata = newdata,
+                       active_variables = active_variables, ...))
 
     } else if(type == 'som') {
 
@@ -767,7 +836,8 @@
 
   predict.combi_analysis <- function(object,
                                      newdata = NULL,
-                                     type = c('class', 'propagation', 'som'), ...) {
+                                     type = c('class', 'propagation', 'som'),
+                                     active_variables = FALSE, ...) {
 
     ## entry control --------
 
@@ -845,7 +915,8 @@
 
     switch(type,
            propagation = propagate(object = object,
-                                   newdata = newdata, ...),
+                                   newdata = newdata,
+                                   active_variables = active_variables, ...),
            som = map_som(object = object,
                          newdata = newdata, ...))
 

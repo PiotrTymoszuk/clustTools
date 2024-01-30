@@ -63,6 +63,9 @@
 #' (propagation) or via the self-organizing map ('som', available only
 #' for SOM and combined SOM clustering).
 #' @param kNN number of the nearest neighbors.
+#' @param active_variables logical, should only the active variables be used for
+#' predictions of the cluster assignment with the k-NN classifier? Applies only
+#' to analyses made with hard threshold regularization and ignored otherwise.
 #' @param simple_vote logical, should classical unweighted k-NN classification
 #' be applied? If FALSE, distance-weighted k-NN is used with the provided kernel
 #' function.
@@ -99,6 +102,7 @@
                          nfolds = 5,
                          type = c('propagation', 'som'),
                          kNN = 5,
+                         active_variables = FALSE,
                          simple_vote = TRUE,
                          resolve_ties = FALSE,
                          kernel_fun = function(x) 1/x,
@@ -119,6 +123,7 @@
     stopifnot(is.logical(simple_vote))
     stopifnot(is.logical(resolve_ties))
     stopifnot(is.logical(.parallel))
+    stopifnot(is.logical(active_variables))
 
     stopifnot(is.function(kernel_fun))
 
@@ -193,22 +198,32 @@
 
       future::plan('multisession')
 
-      exports <- c('tidyverse',
-                   'rlang',
-                   'cluster',
-                   'kohonen',
-                   'dbscan',
-                   'Rcpp',
-                   'somKernels',
-                   'clustTools',
-                   'stringi',
-                   'nomclust')
+      on.exit(future::plan('sequential'))
+
+    }
+
+    exports <- c('tidyverse',
+                 'rlang',
+                 'cluster',
+                 'kohonen',
+                 'dbscan',
+                 'Rcpp',
+                 'somKernels',
+                 'clustTools',
+                 'stringi',
+                 'nomclust')
+
+    suppressPackageStartupMessages(
 
       train_classif <-
         furrr::future_map(fold_set$train ,
                           function(x) clustering_fun(data = x, ...),
                           .options = furrr::furrr_options(seed = TRUE,
                                                           packages = exports))
+
+    )
+
+    suppressPackageStartupMessages(
 
       test_obj <-
         furrr::future_pmap(list(object = train_classif,
@@ -219,26 +234,12 @@
                            simple_vote = simple_vote,
                            resolve_ties = resolve_ties,
                            kernel_fun = kernel_fun,
+                           active_variables = active_variables,
                            .options = furrr::furrr_options(seed = TRUE,
                                                            packages = exports))
 
-     future:: plan('sequential')
 
-    } else {
-
-      train_classif <- map(fold_set$train,
-                           function(x) clustering_fun(data = x, ...))
-
-      test_obj <- pmap(list(object = train_classif,
-                            newdata = fold_set$test),
-                       purrr::safely(predict),
-                       type = type,
-                       kNN = kNN,
-                       simple_vote = simple_vote,
-                       resolve_ties = resolve_ties,
-                       kernel_fun = kernel_fun)
-
-    }
+    )
 
     test_obj <- compact(map(test_obj, ~.x$result))
 
@@ -399,6 +400,9 @@
 #' (propagation) or via the self-organizing map ('som', available only
 #' for SOM and combined SOM clustering).
 #' @param kNN number of the nearest neighbors.
+#' @param active_variables logical, should only the active variables be used for
+#' predictions of the cluster assignment with the k-NN classifier? Applies only
+#' to analyses made with hard threshold regularization and ignored otherwise.
 #' @param simple_vote logical, should classical unweighted k-NN classification
 #' be applied? If FALSE, distance-weighted k-NN is used with the provided kernel
 #' function.
@@ -443,6 +447,7 @@
                                 nfolds = 5,
                                 type = c('propagation', 'som'),
                                 kNN = 5,
+                                active_variables = FALSE,
                                 simple_vote = TRUE,
                                 resolve_ties = FALSE,
                                 kernel_fun = function(x) 1/x,
@@ -526,6 +531,7 @@
             nfolds = nfolds,
             type = type,
             kNN = kNN,
+            active_variables = active_variables,
             simple_vote = simple_vote,
             resolve_ties = resolve_ties,
             kernel_fun = kernel_fun,
@@ -600,6 +606,7 @@
                                 nfolds = 5,
                                 type = c('propagation', 'som'),
                                 kNN = 5,
+                                active_variables = FALSE,
                                 simple_vote = TRUE,
                                 resolve_ties = FALSE,
                                 kernel_fun = function(x) 1/x,
@@ -624,6 +631,7 @@
     stopifnot(is.logical(simple_vote))
     stopifnot(is.logical(resolve_ties))
     stopifnot(is.logical(.parallel))
+    stopifnot(is.logical(active_variables))
 
     stopifnot(is.function(kernel_fun))
 
@@ -663,6 +671,7 @@
             nfolds = nfolds,
             type = type,
             kNN = 5,
+            active_variables = active_variables,
             clustering_fun = clustering_fun,
             distance_som = distance_som,
             distance_method = distance_method,

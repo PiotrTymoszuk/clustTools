@@ -150,10 +150,25 @@
         tibble(observation = obs_id,
                clust_id = factor(res$HTKmeans.out[[1]]$cluster))
 
+      ## determining the distance of centers from variable means
+      ## and active variables
+
+      clust_vars <- colnames(mat_data)
+
+      center_mat <- res$HTKmeans.out[[1]]$centers
+
+      colnames(center_mat) <- clust_vars
+
+      center_distances <- colSums(center_mat^2)
+
+      active_variables <- clust_vars[center_distances != 0]
+
       return(clust_analysis(list(data = quo(!!model_frame),
                                  dist_mtx = calculate_dist(data, 'squared_euclidean'),
                                  dist_method = 'squared_euclidean',
                                  lambdas = lambdas,
+                                 center_distances = center_distances,
+                                 active_variables = active_variables,
                                  clust_fun = 'htk',
                                  clust_obj = res,
                                  clust_assignment = clust_ass,
@@ -394,37 +409,21 @@
     ## centers and identification of active variables -------
 
     ## active variables are those for which all center coordinates
-    ## are non zero. I'm computing the Euclidean distance to the zero point
+    ## are non zero.
+    ## I'm extracting the squared Euclidean distance to the zero point (mean)
 
-    center_coords <-
-      map(tune_objects,
-          ~.x$clust_obj$HTKmeans.out[[1]]$centers)
+    center_distances <- map(tune_objects, ~.x$center_distances)
 
-    center_coords <- map(center_coords, ~.x^2)
+    n_active_vars <- map_dbl(tune_objects, ~length(.x$active_variables))
 
-    center_dists <- map(center_coords, colSums)
+    center_distances <- as_tibble(do.call('rbind', center_distances))
 
-    center_dists <- do.call('rbind', center_dists)
-
-    center_dists <- sqrt(center_dists)
-
-    center_dists <- set_names(as.data.frame(center_dists),
-                              clust_features)
-
-    n_acite_vars <-
-      map(1:nrow(center_dists),
-          ~center_dists[.x, ] != 0)
-
-    n_active_vars <- NULL
-
-    center_dists <- mutate(center_dists,
-                           lambda = lambdas,
-                           n_active_vars = map_dbl(n_acite_vars, sum))
-
-    center_dists <- as_tibble(center_dists)
+    center_distances <- mutate(center_distances,
+                               lambda = lambdas,
+                               n_active_vars = n_active_vars)
 
     stats <- left_join(stats,
-                       center_dists[c('lambda', 'n_active_vars')],
+                       center_distances[c('lambda', 'n_active_vars')],
                        by = 'lambda')
 
     ## best tune and the analysis object -------
@@ -466,7 +465,7 @@
 
     tuner(list(analysis = tune_objects[[best_stats$object_id[[1]]]],
                stats = stats,
-               center_distances = center_dists,
+               center_distances = center_distances,
                fun = 'tune_htk',
                dataset = type,
                type = 'development',

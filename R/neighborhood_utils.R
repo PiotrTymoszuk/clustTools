@@ -222,6 +222,16 @@
 
       data_points <- rownames(neighbor_lst[[i]]$id)
 
+      ## fall-back for kNN objects without observation IDs
+
+      if(is.null(data_points)) {
+
+        data_points <- point_labels[[i]]
+
+        rownames(neighbor_lst[[i]]$id) <- point_labels[[i]]
+
+      }
+
       neighbor_lst[[i]] <- map(data_points,
                                ~point_labels[[i]][neighbor_lst[[i]]$id[.x, ]])
 

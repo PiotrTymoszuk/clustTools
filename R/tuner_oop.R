@@ -247,7 +247,7 @@
         ggplot2::labs(title = 'Regularization paths',
                       subtitle = plot_subtitle,
                       x = 'lambda',
-                      y = 'distance from mean')
+                      y = 'cluster center - mean distance')
 
     }
 

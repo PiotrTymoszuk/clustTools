@@ -134,7 +134,7 @@
 
   clust_analysis <- function(x) {
 
-    ## entry control
+    ## entry control -------
 
     if(!is.list(x)) {
 
@@ -185,21 +185,29 @@
 
     stopifnot(all(c('observation', 'clust_id') %in% names(x$clust_assignment)))
 
-    ## output
+    ## output ------
 
     dist_check <- inherits(eval_tidy(x$data), 'dist')
 
     if(!dist_check) {
 
-      return(structure(x, class = 'clust_analysis'))
+      x <- structure(x, class = 'clust_analysis')
 
     } else {
 
       x$dist_method <- 'custom'
 
-      return(structure(x, class = c('min_analysis', 'clust_analysis')))
+      x <- structure(x, class = c('min_analysis', 'clust_analysis'))
 
     }
+
+    if(!is.null(x$active_variables)) {
+
+      x <- structure(x, class = c('hard_threshold', class(x)))
+
+    }
+
+    x
 
   }
 

@@ -30,7 +30,10 @@
 #' @param with type of the input data for the reduction analysis:
 #' the clustering data ('data'), the matrix of distances between observations
 #' ('distance') or U matrix between SOM nodes ('umatrix').
-#' @param train_object an optional `red_analysis` object wchich will be used as
+#' @param distance_method an optional name of the distance metric or, for
+#' analyses of multi-layer data, a vector of distance names. If not provided,
+#' the distance metric will be extracted from the object.
+#' @param train_object an optional `red_analysis` object which will be used as
 #' a training layout. This works currently only for PCA and UMAP and in case
 #' of single layer data frames as clustering data.
 #' Please refer to \code{\link[stats]{prcomp}} and \code{\link[umap]{umap}} for
@@ -49,6 +52,7 @@
                                         kdim = NULL,
                                         red_fun = c('pca', 'mds', 'umap'),
                                         with = c('distance', 'data', 'umatrix'),
+                                        distance_method = NULL,
                                         train_object = NULL, ...) {
 
     ## entry control -------
@@ -138,8 +142,16 @@
 
     if(!check_supersom | with %in% c('distance', 'umatrix')) {
 
+      if(is.null(distance_method)) distance_method <- object$dist_method
+
+      if(!distance_method %in% get_kernel_info()) {
+
+        stop('Unrecognized distance metric.', call. = FALSE)
+
+      }
+
       red_obj <- reduce_data(extract(object, type = with),
-                             distance_method = object$dist_method,
+                             distance_method = distance_method,
                              kdim = kdim,
                              red_fun = red_fun, ...)
 
@@ -164,13 +176,27 @@
 
     ## reduction: multi-layer SOM and its predictions ---------
 
-    if(object$clust_fun %in% c('supersom')) {
+    if(is.null(distance_method)) {
 
-      layer_dist <- object$clust_obj$dist.fcts
+      if(object$clust_fun %in% c('supersom')) {
+
+        layer_dist <- object$clust_obj$dist.fcts
+
+      } else {
+
+        layer_dist <- object$dots$dist.fcts
+
+      }
 
     } else {
 
-      layer_dist <- object$dots$dist.fcts
+      layer_dist <- distance_method
+
+    }
+
+    if(any(!layer_dist %in% get_kernel_info())) {
+
+      stop('Unsupported distance metric.', call. = FALSE)
 
     }
 
@@ -212,6 +238,7 @@
                                         kdim = NULL,
                                         red_fun = c('pca', 'mds', 'umap'),
                                         with = c('distance', 'data', 'umatrix'),
+                                        distance_method = NULL,
                                         train_object = NULL, ...) {
 
     ## entry control -------
@@ -228,6 +255,7 @@
                                kdim = kdim,
                                red_fun = red_fun,
                                with = with,
+                               distance_method = distance_method,
                                train_object = train_object, ...)
 
     observation <- NULL
@@ -261,7 +289,8 @@
   components.umatrix_analysis <- function(object,
                                           kdim = NULL,
                                           red_fun = c('pca', 'mds', 'umap'),
-                                          with = c('distance', 'data', 'umatrix'), ...) {
+                                          with = c('distance', 'data', 'umatrix'),
+                                          distance_method = NULL, ...) {
 
     ## entry control ------
 
@@ -278,7 +307,8 @@
     data_comps <- components(object$clust_analyses$observation,
                              kdim = kdim,
                              red_fun = red_fun,
-                             with = 'data')
+                             with = 'data',
+                             distance_method = distance_method)
 
     observation <- NULL
 
