@@ -753,4 +753,65 @@
 
   }
 
+# Spectralization result container -------
+
+#' Create a `spectre` object.
+#'
+#' @description
+#' Creates an instance of `spectre` class.
+#'
+#' @details
+#' Technically, a `spectre` object is a list with the following components:
+#'
+#' * `degrees`: a numeric vector with degrees of the graph nodes stored in the
+#' diagonal of the degree matrix
+#'
+#' * `eigen_values`: a numeric vector of eigenvalues sorted from the largest to
+#' the smallest one
+#'
+#' * `eigen_vectors`: a numeric matrix whose rows represent the observations in
+#' he initial data set and columns representing the eigenvectors.
+#' The eigenvectors are sorted by their einegvalues: the largest come first
+#'
+#' @param x a list with elements specified in Details.
+#'
+#' @return an instance of the `spectre` class as described in Details.
+
+  spectre <- function(x) {
+
+    ## entry control -------
+
+    error_txt <-
+      paste("'x' has to be a list with the following elements: 'degree',",
+            "eigen_values', and 'eigen_vectors'.")
+
+    if(!is.list(x)) stop(error_txt, call. = FALSE)
+
+    if(is.null(names(x))) stop(error_txt, call = FALSE)
+
+    if(any(!c('degrees', 'eigen_values', 'eigen_vectors') %in% names(x))) {
+
+      stop(error_txt, call. = FALSE)
+
+    }
+
+    if(!is.numeric(x$degrees) | !is.numeric(x$eigen_values)) {
+
+      stop("'degree' and 'eigen_values' have to be numeric vectors.",
+           call. = FALSE)
+
+    }
+
+    error_txt <- "'eigen_vectors' has to be a numeric matrix."
+
+    if(!is.matrix(x$eigen_vector)) stop(error_txt, call. = FALSE)
+
+    if(!is.numeric(x$eigen_vector)) stop(error_txt, call. = FALSE)
+
+    ## construction --------
+
+    structure(x, class = 'spectre')
+
+  }
+
 # END ------

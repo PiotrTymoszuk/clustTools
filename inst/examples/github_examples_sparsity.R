@@ -49,7 +49,7 @@
     mutate(vintage = vintages)
 
   ## training: 100 randomly chosen observations
-  ## the rest used for validation#
+  ## the rest used for validation
   ## created with caret's createDataPartition() to keep
   ## the vintage distribution
 
@@ -131,17 +131,19 @@
     map(cv,
         type = 'propagation',
         nfolds = 10,
-        kNN = 11) %>%
+        kNN = 11,
+        active_variables = TRUE) %>%
     map(summary) %>%
     map(select, ends_with('mean'))
 
 # performance in the test data -------
 
   test_clusters <- train_clusters %>%
-    map(predict,
+    map(predict.clust_analysis,
         newdata = wine_lst$test,
         type = 'propagation',
-        kNN = 11)
+        kNN = 11,
+        active_variables = TRUE)
 
   test_clusters %>%
     map(summary)
@@ -157,7 +159,7 @@
                                mid = 'white',
                                high = 'steelblue',
                                midpoint = 20,
-                               limits = c(8, 32)))
+                               limits = c(7, 32)))
 
 # summary of the performance stats -----
 
@@ -192,11 +194,16 @@
 
 # UMAP plots ------
 
-  umap_train <- wine_lst$train %>%
-    reduce_data(distance_method = 'euclidean',
-                kdim = 2,
-                red_fun = 'umap',
-                random_state = 12345)
+  ## common UMAP layout
+
+  umap_train <- train_clusters[[1]] %>%
+    components(with = 'data',
+               distance_method = 'cosine',
+               kdim = 2,
+               red_fun = 'umap',
+               random_state = 12345)
+
+  ## plotting the cluster assignment on the common UMAP layout
 
   kmeans_plots <- c(train_clusters,
                     test_clusters) %>%
@@ -207,6 +214,8 @@
         with = 'data',
         red_fun = 'umap',
         train_object = umap_train)
+
+  ## and adjustments of plot elements using the ggplot interface
 
   kmeans_plots <-
     map2(kmeans_plots,
@@ -223,6 +232,11 @@
     kmeans_plots$test_kmeans +
     kmeans_plots$train_htk +
     kmeans_plots$test_htk
+
+# Heat maps of clustering factors -----
+
+  plot_clust_hm(train_clusters$kmeans)
+  plot_clust_hm(train_clusters$htk)
 
 # variable importance -------
 
@@ -357,8 +371,9 @@
   train_combi %>%
     map(cv,
         nfolds = 10,
-        type = 'som',
-        .parallel = FALSE) %>%
+        type = 'propagation',
+        active_variables = FALSE,
+        .parallel = TRUE) %>%
     map(summary) %>%
     map(select, ends_with('mean'))
 
@@ -367,7 +382,8 @@
   train_combi %>%
     map(predict,
         newdata = wine_lst$test,
-        type = 'som') %>%
+        type = 'propagation',
+        active_variables = FALSE) %>%
     map(summary)
 
   ## variable importance

@@ -16,6 +16,7 @@
 #' @importFrom dplyr select
 #' @importFrom dplyr filter
 #' @importFrom dplyr rename
+#' @importFrom dplyr relocate
 #'
 #' @importFrom purrr map
 #' @importFrom purrr map2
@@ -50,7 +51,12 @@
 #'
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 aes
+#' @importFrom ggplot2 geom_vline
+#' @importFrom ggplot2 geom_point
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 position_jitter
 #'
 #' @importFrom cluster silhouette
+#' @importFrom expm `%^%`
 
   NULL

@@ -1,5 +1,5 @@
 # Provides S3 generics and the default methods for functions 'kidnapped'
-# from base R and other packages.
+# from base R and other packages, and `as_` functions used for type conversion.
 
 # Variance --------
 
@@ -13,20 +13,12 @@
 #' @param ... extra arguments passed to methods, e.g. \code{\link[stats]{var}}.
 #' @export
 
-  var <- function(x, ...) {
-
-    UseMethod('var')
-
-  }
+  var <- function(x, ...) UseMethod('var')
 
 #' @rdname var
 #' @export
 
-  var.default <- function(x, ...) {
-
-    stats::var(x, ...)
-
-  }
+  var.default <- function(x, ...) stats::var(x, ...)
 
 # Distance --------
 
@@ -42,19 +34,11 @@
 #' @param ... arguments for methods, e.g. passed to \code{\link[stats]{dist}}.
 #' @export
 
-  dist <- function(x, ...) {
-
-    UseMethod('dist')
-
-  }
+  dist <- function(x, ...) UseMethod('dist')
 
 #' @rdname dist
 #' @export
 
-  dist.default <- function(x, ...) {
-
-    stats::dist(x, ...)
-
-  }
+  dist.default <- function(x, ...) stats::dist(x, ...)
 
 # END ------
